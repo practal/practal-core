@@ -1,0 +1,101 @@
+{
+  "name": "practal",
+  "displayName": "Practal",
+  "description": "Practal — Practical Logic: A Bicycle for Your Mathematical Mind",
+  "version": "0.0.2",
+  "publisher": "Practal",
+  "icon": "practal.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/practal/practal-core.git"
+  },
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "main": "./out/extension",
+  "license": "AGPL-3.0-only",
+  "categories": [
+    "Programming Languages"
+  ],
+  "sponsor": {"url": "https://github.com/sponsors/practal?o=esb"},
+  "keywords": ["theorem proving", "functional programming", "logic", "algebra", "mathematics"],
+  "scripts": {
+    "test": "tsc && node ./out/test.js",
+    "insta": "tsc && node ./out/things/test.js"
+  },
+  "contributes": {
+    "languages": [{
+      "id": "practal",
+      "aliases": ["Practal", "practal"],
+      "extensions": [".practal"],
+      "configuration": "./language-configuration.json"
+    }], 
+    "semanticTokenScopes": [
+      {
+        "scopes": {
+          "practal-module-name": ["entity.name"],
+          "practal-abstraction": ["entity.name.function"],
+          "practal-identifier": ["entity.name"],
+          "practal-syntactic-category": ["constant.language"], 
+          "practal-syntactic-category-keyword": ["entity.name.type"], 
+          "practal-syntactic-comparator": ["keyword.operator"], 
+          "practal-invalid": ["invalid.illegal"],
+          "practal-primary-keyword": ["keyword.control"],
+          "practal-secondary-keyword": ["entity.name.type"],
+          "practal-free-variable": ["variable.other"],
+          "practal-bound-variable": ["variable.parameter"],
+          "practal-custom-syntax": ["keyword.operator"],
+          "practal-variable": ["variable.other"],          
+          "practal-comment" : ["comment.block"],          
+          "practal-label" : ["entity.name"],
+          "practal-square-braces" : ["keyword.control"],
+          "practal-round-braces" : ["keyword.operator"],
+          "practal-punctuation" : ["keyword.control"],
+          "practal-syntax" : ["keyword.operator"],
+          "practal-syntax-fragment" : ["keyword.operator"],
+          "practal-syntax-optional-space" : ["keyword.operator"],
+          "practal-syntax-mandatory-space" : ["entity.name.type"],
+          "practal-latex-syntax" : ["string"],
+          "practal-latex-space" : ["string"],
+          "practal-latex-control-sequence" : ["string"]
+        }
+      }
+    ],    
+    "configurationDefaults": {
+      "editor.semanticTokenColorCustomizations": {
+        "rules": {
+            "practal-primary-keyword": {"bold": true },
+            "practal-round-braces": "#969896",
+            "practal-free-variable": { "bold" : true, "italic": false },
+            "practal-bound-variable": { "bold": false, "italic": true },
+            "practal-syntactic-category": { "italic": true },
+            "practal-syntactic-category-keyword": { "italic": true },   
+            "practal-syntax-mandatory-space": { "underline": true },
+            "practal-latex-control-sequence" : { "italic": true }           
+          }
+      },      
+      "[practal]": {
+        "editor.occurrencesHighlight": false,        
+        "editor.fontFamily": "STIXGeneral",
+        "editor.fontSize": 16,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.detectIndentation": false,
+        "editor.semanticHighlighting.enabled": true,
+        "editor.quickSuggestions": {
+          "other": false,
+          "comments": false,
+          "strings": false
+        }   
+      }      
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.7",
+    "@types/vscode": "^1.73.0",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "eslint": "^8.26.0",
+    "typescript": "^4.8.4"
+  }    
+}
