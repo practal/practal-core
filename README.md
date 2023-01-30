@@ -1,5 +1,10 @@
 # Practal Core
 
+## Installation
+
+Practal Core is available as a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=Practal.practal).
+Make sure you also have the [STIX fonts](https://www.stixfonts.org) installed on your system.
+
 ## Features
 
 Provides syntax highlighting for `.practal` files. Soon, you will actually be able to *do* something with your `.practal` files, but for now, that's it. For more information on *Practal*, please check 
@@ -9,10 +14,6 @@ Note that the syntax of Practal's terms is user-defined, so you can play around 
 for a deterministic LR variant of [*Local Lexing*](https://obua.com/publications/local-lexing/1/).
 
 <img src="Foundation.gif" alt="Foundation.practal" width="488"/>
-
-## Requirements
-
-This extension assumes that you have the [STIX math fonts installed](https://www.stixfonts.org). If you don't, it'll still work but might look odd, as important symbols will have the wrong size and shape.
 
 ## Known Issues
 
