@@ -1,37 +1,40 @@
 theory Foundation
 
-'quant(ifier) < 'prop(osition)
+'quant(ified-proposition) < 'prop(osition) < 'atom(ic-proposition)
+'bool(ean) ⪫ 'val(ue) 
+'bool ⪫ 'atom
 
-\true 'prop ⊤  
+\true 
+    'bool ⊤ 
+    'bool 𝖳
 
 \imp(lies) A B
-    'prop #A ⇒ #B'quant
-    'prop #A => #B'quant 
-    $'prop #A \Rightarrow #B'
-    $$'prop #A \implies #B'
+    ' #A  ⇒  #B'quant
+    ' #A  =>  #B'quant
+
+'atom > 'imp ⪫ 'prop
 
 \(for-)all x. P[x]
-    'quant ∀ #x .  #P'
-    $'quant \forall #x.\, #P' 
+    'quant ∀ #x.  #P'
 
-\eq(uals) A B ' #A = #B
+\eq(uals) A B 
+    'atom #A'val  =  #B'val
 
 axiom Truth-1: ⊤
 axiom Truth-2: A ⇒ A = ⊤
 axiom Implication-1: A ⇒ B ⇒ A
 axiom Implication-2: (A ⇒ B ⇒ C) ⇒ (A ⇒ B) ⇒ A ⇒ C
 axiom Universal-1: (∀ x. A[x]) ⇒ A[x] 
-axiom Universal-2: (∀ x. A ⇒ B[x]) ⇒ A ⇒ (∀ x. B[x])
+axiom Universal-2: (∀ x. A ⇒ B[x]) ⇒ A ⇒ ∀ x. B[x]
 axiom Equality-1: x = x
 axiom Equality-2: x = y ⇒ A[x] ⇒ A[y]
 
-\false 'prop ⊥
+\false 'bool 𝖥
     = ∀ x. x
 
-\not A = A ⇒ ⊥ 
-    'prop ¬ #A'
-    $'prop \neg\, #A'
+\not A = A ⇒ 𝖥
+    'atom ¬ #A'
 
-\n(ot-)eq(uals) A B =  ¬(A = B)
-    'prop #A ≠ #B
-    $'prop #A \neq #B
+\n(ot-)eq(uals) A B =  ¬ A = B
+    'atom #A  ≠  #B
+
