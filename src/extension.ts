@@ -107,10 +107,13 @@ function tokenizer(lines : TextLines) : [Iterable<Token<TokenType>>, Iterable<Di
     }
     for (const token of tokens) {
         if (token.type === TokenType.invalid) {
-            const chars = [...textOfToken(lines, token)];
             const msg = "Syntax error.";
             const diagnosis = new Diagnosis(spanOfResult(token), Severity.ERROR, msg);
             diagnoses.push(diagnosis);
+        } else if (token.type === TokenType.unknown_id) {
+            const msg = "Unknown abstraction.";
+            const diagnosis = new Diagnosis(spanOfResult(token), Severity.ERROR, msg);
+            diagnoses.push(diagnosis);        
         }
     }
     diagnose(parsed.state.theory, lines, diagnoses, parsed.result);
