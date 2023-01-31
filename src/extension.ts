@@ -105,16 +105,22 @@ function tokenizer(lines : TextLines) : [Iterable<Token<TokenType>>, Iterable<Di
             diagnoses.push(new Diagnosis(new Span(0, 0, 0, 0), Severity.WARNING, "The syntax definition contains conflicting elements, causing issues."));
         }
     }
+    let first_invalid = true;
     for (const token of tokens) {
         if (token.type === TokenType.invalid) {
-            const msg = "Syntax error.";
-            const diagnosis = new Diagnosis(spanOfResult(token), Severity.ERROR, msg);
-            diagnoses.push(diagnosis);
+            if (first_invalid) {
+                first_invalid = false;
+                const msg = "Syntax error.";
+                const diagnosis = new Diagnosis(spanOfResult(token), Severity.ERROR, msg);
+                diagnoses.push(diagnosis);
+            }
+            continue;
         } else if (token.type === TokenType.unknown_id) {
             const msg = "Unknown abstraction.";
             const diagnosis = new Diagnosis(spanOfResult(token), Severity.ERROR, msg);
             diagnoses.push(diagnosis);        
         }
+        if (token.type !== TokenType.whitespace) first_invalid = true;
     }
     diagnose(parsed.state.theory, lines, diagnoses, parsed.result);
     return [tokens, diagnoses];
