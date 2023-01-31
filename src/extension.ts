@@ -71,9 +71,7 @@ function diagnose(theory : Theory, lines : TextLines, diagnoses : Diagnosis[], r
                 break;
             case ResultKind.TREE: 
                 if (result.type && result.type.type === SectionName.invalid) {
-                    //debug("result = " + result.startLine + ", " + result.startOffsetInclusive + ", " + result.endLine + ", " + result.endOffsetExclusive);
-                    if (nat.is(result.endOffsetExclusive) && nat.is(result.startOffsetInclusive)) // no idea where this is coming from
-                        diagnoses.push(new Diagnosis(spanOfResult(result), Severity.ERROR, "Invalid syntax."));
+                    diagnoses.push(new Diagnosis(spanOfResult(result), Severity.ERROR, "Invalid syntax."));
                 } else {
                     if (result.type !== undefined) {
                         for (const child of result.children) diag(child);

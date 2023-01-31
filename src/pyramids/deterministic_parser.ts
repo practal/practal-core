@@ -448,7 +448,7 @@ export function shiftResult<S, T>(window : TextLinesWindow, result : Result<S, T
     const offsets = window.offsets;
     switch (kind) {
         case ResultKind.TOKEN: {
-            const offset = offsets[result.line];
+            const offset = result.line < offsets.length ? offsets[result.line] : 0;
             result.startOffsetInclusive += offset;
             result.endOffsetInclusive += offset;
             result.line += startLine;
@@ -456,7 +456,7 @@ export function shiftResult<S, T>(window : TextLinesWindow, result : Result<S, T
         }
         case ResultKind.TREE: {
             const line = result.startLine;
-            const offset = offsets[line];
+            const offset = line < offsets.length ? offsets[line] : 0;
             result.startOffsetInclusive += offset;
             result.endOffsetExclusive += offset;
             result.startLine += startLine;

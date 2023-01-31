@@ -21,7 +21,7 @@ function loadExample(name : string) : TextLines {
 
 console.log("Testing Practalium tokenizer ...");
 configureDebugging(console.log);
-const example = loadExample("Foundation0.practal"); //createTextLines(source.split("\n"));
+const example = loadExample("NaN.practal"); //createTextLines(source.split("\n"));
 console.log("-------------");
 printTextLines(example);
 console.log("-------------");
@@ -30,6 +30,7 @@ const state1 : ParseState = { theory : Theory.mk(example), varParser : undefined
 const parsed1 = practaliumDP(state1, example, 0, 0);
 if (parsed1 === undefined) {
     console.log("Parsing failed.");
+    process.exit(1);
 } 
 const theory = Theory.mk(example);
 const state : ParseState = { theory : theory, varParser : undefined, termParser : generateCustomGrammar(state1.theory).parser };
