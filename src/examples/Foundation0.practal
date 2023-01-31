@@ -13,13 +13,14 @@ axiom Truth-2: \implies A (\eq A \true)
 axiom Implication-1: \implies A (\implies B A)
 axiom Implication-2: \implies (\imp A \imp B C) (\implies (\imp A B) (\implies A C))
 axiom Universal-1: \implies (\all x. A[x]) A[x] 
-axiom Universal-2: \implies (\all x. \imp A B[x]) \implies A \all x B[x]
+axiom Universal-2: \implies (\all x. \imp A B[x]) (\implies A (\all x. B[x]))
 axiom Equality-1: \equals x x
-axiom Equality-2: \implies (\eq x y) \implies A[x] A[y]
+axiom Equality-2: \implies (\eq x y) (\implies A[x] A[y])
 
 \false = \all x. x
 
 \not A = \implies A \false
 
-\n(ot-)eq(uals) A B =  \not (\eq A B)
+\n(ot-)eq(uals) A B =  \not (\equals A B)
+
 
