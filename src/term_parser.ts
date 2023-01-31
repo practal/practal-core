@@ -38,10 +38,10 @@ export const basic_grammar : ExprGrammar = {
         rule("Var-open", or("free-var-open", "var-open")), 
         rule("Term-list", ows, "Term", star(ows, "comma", ows, "Term")),
 
-        rule("Operation-app", "operation-id", star (ows, "Atomic")),
-        rule("Operator-app", "operator-id", star(ows, "bound-var"), ows, "dot", "Operator-params"),
-        rule("Operator-params", ws, "Term"),
-        rule("Operator-params", ws, "Atomic", "Operator-params")
+        rule("Operation-app", "operation-id", "Params"),
+        rule("Operator-app", "operator-id", star(ows, "bound-var"), ows, "dot", "Params"),
+        rule("Params", ws, "Term"),
+        rule("Params", ws, "Atomic", "Params")
     ],
 
     distinct : [
@@ -127,8 +127,11 @@ export const unknownIdP : P = mkIdP(TokenType.unknown_id, true, s => true);
 export const valueIdP : P = mkIdP(TokenType.value_id, true, s => s !== null && s.arity === 0);
 export const operationIdP : P = mkIdP(TokenType.operation_id, true, s => s !== null && s.valence === 0 && s.arity > 0);
 export const operatorIdP : P = mkIdP(TokenType.operator_id, true, s => s !== null && s.valence > 0);
+export const valueIdNoBackslashP : P = mkIdP(TokenType.value_id, false, s => s !== null && s.arity === 0);
+export const operationIdNoBackslashP : P = mkIdP(TokenType.operation_id, false, s => s !== null && s.valence === 0 && s.arity > 0);
+export const operatorIdNoBackslashP : P = mkIdP(TokenType.operator_id, false, s => s !== null && s.valence > 0);
 
-export const terminalParsersWithoutVar: TerminalParsers<ParseState, SectionData, TokenType> = 
+export const terminalParsers1: TerminalParsers<ParseState, SectionData, TokenType> = 
     mkTerminalParsers([
         ["final", finalP],
         ["free-var-open", freeVarOpenP],
@@ -148,8 +151,13 @@ export const terminalParsersWithoutVar: TerminalParsers<ParseState, SectionData,
         ["ows", owsP]
     ]);
 
-export const terminalVarParser : TerminalParsers<ParseState, SectionData, TokenType> = 
-    mkTerminalParsers([["var", varP]]);
+export const terminalParsers2 : TerminalParsers<ParseState, SectionData, TokenType> = 
+    mkTerminalParsers([
+        ["operator-id", operatorIdNoBackslashP],
+        ["operation-id", operationIdNoBackslashP],
+        ["value-id", valueIdNoBackslashP],
+        ["var", varP]
+    ]);
 
 export const basic_labels : [Sym, SectionData][] = [
     ["Operator-app", SectionDataNone(SectionName.operator_app)],
@@ -216,12 +224,6 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     }
 
     function text(t : string) : string {
-        /*if (t === "(") return "round_open";
-        if (t === ")") return "round_close";
-        if (t === "[") return "square_open";
-        if (t === "]") return "square_close";
-        if (t === ".") return "dot";
-        if (t === ",") return "comma";*/
         let h = texts.get(t);
         if (h === undefined) {
            h = texts.size;
@@ -321,7 +323,7 @@ export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar
         console.log("Text §" + texts[i][1] + " = '" + texts[i][0] + "'");
     }*/
     const fragments_parser : TerminalParsers<ParseState, SectionData, TokenType> = mkTerminalParsers(texts.map(t => ["§" + t[1], tokenDP(literalL(t[0]), TokenType.custom_syntax)]));
-    const custom_terminal_parsers : TerminalParsers<ParseState, SectionData, TokenType> = orGreedyTerminalParsers([terminalParsersWithoutVar, fragments_parser, terminalVarParser]);
+    const custom_terminal_parsers : TerminalParsers<ParseState, SectionData, TokenType> = orGreedyTerminalParsers([terminalParsers1, fragments_parser, terminalParsers2]);
     //console.log("creating custom LR parser ...");
     const labels = [...basic_labels];
     const custom_labels : [string, SectionData][] = [...customSyntax.syntactic_categories].map(sc => ["S`" + sc + "-atomic", SectionDataNone(SectionName.custom)])
