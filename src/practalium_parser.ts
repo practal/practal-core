@@ -1,5 +1,5 @@
 import { SemanticTokens } from "vscode";
-import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, lookaheadInLineDP, optDP, orDP, rep1DP, repDP, Section, sectionDP, seqDP, textOfToken, tokenDP, modifyDP, useDP, newlineDP, modifyResultDP, Token, iterateTokensFlat, printResult, Result, ResultKind, iterateContentSections, iterateResultsDeep } from "./pyramids/deterministic_parser";
+import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, lookaheadInLineDP, optDP, orDP, rep1DP, repDP, Section, sectionDP, seqDP, textOfToken, tokenDP, modifyDP, useDP, newlineDP, modifyResultDP, Token, iterateTokensFlat, printResult, Result, ResultKind, iterateContentSections, iterateResultsDeep, Tree, endOf } from "./pyramids/deterministic_parser";
 import { alphaNumL, anyCharL, charL, charsL, firstL, hyphenL, letterL, Lexer, literalL, lookaheadL, nonspaceL, nonspaces1L, nonspacesL, optL, rep1L, repL, seqL, spaces1L, underscoreL } from "./pyramids/lexer";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
 import { TextLines } from "./pyramids/textlines";
@@ -147,7 +147,7 @@ const cheatFreeDP = cheatDP(c => c >= "A" && c <= "Z", TokenType.free_variable);
 const cheatIdDP = cheatDP(c => c >= "a" && c <= "z", TokenType.bound_variable);
 const cheatSyntaxDP = cheatDP(c => true, TokenType.syntax_fragment); 
 
-const termDP : P = useDP((lines, state) => totalOfDP(state.termParser));
+const termDP : P = useDP((lines, state) => totalTermOfDP(state.termParser));
 
 //repDP(orDP(spacesDP, symbolsDP, abstractionDP, cheatFreeDP, cheatIdDP, cheatSyntaxDP, invalidCharDP))
 
@@ -161,6 +161,37 @@ function totalOfDP(parser?: P) : P {
     const skip = allOfDP(TokenType.invalid);
     if (parser === undefined) return skip;
     else return seqDP(parser, skip);
+}
+
+const markInvalidDP : P = orDP(
+    seqDP(repDP(spacesDP), tokenDP(nonspaces1L, TokenType.invalid), allOfDP(TokenType.invalid)),
+    seqDP(emptyDP(SectionDataNone(SectionName.invalid)), repDP(spacesDP)));
+
+function totalTermOfDP(parser?: P) : P {
+    if (parser === undefined) return allOfDP(TokenType.invalid);
+    const termParser = parser;
+    function parse(state : ParseState, lines : TextLines, line : number, offset : number) : DPResult<ParseState, SectionData, TokenType> {
+        const termDPResult = termParser(state, lines, line, offset);
+        if (termDPResult === undefined) return markInvalidDP(state, lines, line, offset);
+        const termResult = termDPResult.result;
+        if (termResult.kind === ResultKind.TREE && termResult.type?.type === SectionName.invalid) {
+            const invalidDPResult = force(markInvalidDP(termDPResult.state, lines, termResult.endLine, termResult.endOffsetExclusive));
+            const [endLine, endOffset] = endOf(invalidDPResult.result);
+            const tree : Tree<SectionData, TokenType> = {
+                kind: ResultKind.TREE,
+                type: null,
+                startLine: termResult.startLine,
+                startOffsetInclusive: termResult.startOffsetInclusive,
+                endLine: endLine,
+                endOffsetExclusive: endOffset,
+                children: [...termResult.children, invalidDPResult.result]
+            }
+            return { state : invalidDPResult.state, result : tree };
+        } else {
+            return termDPResult;
+        }
+    }
+    return parse;
 }
 
 function keyword(keyword : string) : P {
