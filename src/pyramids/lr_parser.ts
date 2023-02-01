@@ -7,6 +7,7 @@ import { convertExprGrammar, ExprGrammar } from "./expr_grammar";
 import { Sym } from "./grammar_symbols";
 import { Action, ActionKind, computeActionsOfState, computeLR1Graph, extendGrammar, nextTerminalsOf } from "./lr";
 import { SectionDataNone, SectionName } from "../practalium_parser";
+import { debug } from "../things/debug";
 
 export type TerminalParsers<State, S, T> = 
     (terminals : Set<Sym | null>) => 
@@ -103,6 +104,10 @@ export function lrDP<State, S, T>(exprGrammar : ExprGrammar, nonterminal_labels 
         }
         plans.push(plan);
     }  
+
+
+
+
     //if (withConflicts > 0) throw new Error("Found " + withConflicts + " states with errors out of " + lr1.states.length + " states.");
 
     const rules = G.grammar.rules;
@@ -195,7 +200,12 @@ export function lrDP<State, S, T>(exprGrammar : ExprGrammar, nonterminal_labels 
             const lr_state = lr_states[lr_states.length - 1];
             const plan = plans[lr_state];
             const executionResult = executePlan(state, lines, line, offset, plan);
-            if (executionResult === undefined) return failed();
+            if (executionResult === undefined) {
+                /*debug("executionResult is undefined");
+                debug("----------------------------");
+                printActionPlan(G.symbols, plan);*/
+                return failed();
+            }
             const [tokens, new_state, action] = executionResult;
             state = new_state;
             const kind = action.kind;

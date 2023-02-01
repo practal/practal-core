@@ -53,7 +53,9 @@ export const basic_grammar : ExprGrammar = {
         ]
     ],
 
-    empty : [["ows", "ws"]]
+    empty : [["ows", "ws"]],
+
+    final : ["final"]
 };
 
 type P = DetParser<ParseState, SectionData, TokenType>    

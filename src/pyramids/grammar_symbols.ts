@@ -22,12 +22,14 @@ export class GrammarSymbols {
     #nonterminals : Sym[]
     #distinct : Set<int>[]
     #empty : Map<int, int>
+    #final : Set<int>
     constructor() {
         this.#terminals = [];
         this.#nonterminals = [];
         this.#handles = new HashMap(ArrayHash(string));
         this.#distinct = [];
         this.#empty = new Map();
+        this.#final = new Set();
     }
     handleOf(syms : Sym[]) : int | undefined {
         return this.#handles.get(syms);
@@ -106,6 +108,10 @@ export class GrammarSymbols {
         if (this.#empty.has(empty)) throw new Error("Terminal '"+possibly_empty+"'is already declared as possibly empty.");
         this.#empty.set(empty, nonempty);
     }
+    declare_final(f : Sym) {
+        const h = force(this.handleOf([f]));
+        this.#final.add(h);
+    }
     nonemptyVersionOf(possibly_empty : int) : int | undefined {
         return this.#empty.get(possibly_empty);
     }
@@ -118,6 +124,9 @@ export class GrammarSymbols {
             }
         }
         return false;
+    }
+    is_final(h : int) : boolean {
+        return h === 0 || this.#final.has(h);
     }
 }
 freeze(GrammarSymbols);

@@ -14,7 +14,7 @@ export const enum ExprKind {
 
 export type Expr = Sym | { kind : ExprKind, params : Expr[] }
 
-export type ExprGrammar = { start : Sym, rules : { lhs : Sym, rhs : Expr }[], distinct? : Sym[][], empty? : [Sym, Sym][]}
+export type ExprGrammar = { start : Sym, rules : { lhs : Sym, rhs : Expr }[], distinct? : Sym[][], empty? : [Sym, Sym][], final? : Sym[] }
 
 export function cloneExpr(expr : Expr) : Expr {
     if (typeof expr === "string") return expr;
@@ -30,6 +30,9 @@ export function cloneExprGrammar(grammar : ExprGrammar) : ExprGrammar {
     }
     if (grammar.empty !== undefined) {
         result.empty = grammar.empty.map(syms => [...syms]);
+    }
+    if (grammar.final !== undefined) {
+        result.final = [...grammar.final];
     }
     return result;
 }
@@ -223,6 +226,10 @@ export function convertExprGrammar(
 
     for (const [e, n] of exprGrammar.empty ?? []) {
         symbols.declare_empty(e, n);
+    }
+
+    for (const f of exprGrammar.final ?? []) {
+        symbols.declare_final(f);
     }
 
     return { symbols : symbols, grammar : new Grammar(start, rules) };
