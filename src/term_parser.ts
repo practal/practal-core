@@ -1,5 +1,5 @@
 import { Shape } from "./logic/shape";
-import { ParseState, SectionData, SectionDataNone, SectionName, TokenType } from "./practalium_parser";
+import { ParseState, SectionData, SectionDataNone, SectionDataTerm, SectionName, TokenType } from "./practalium_parser";
 import { DetParser, eofDP, modifyResultDP, newlineDP, optDP, orDP, rep1DP, seqDP, strictTokenDP, textOfToken, Token, tokenDP } from "./pyramids/deterministic_parser";
 import { cloneExprGrammar, Expr, ExprGrammar, opt, or, rule, seq, star } from "./pyramids/expr_grammar";
 import { Sym } from "./pyramids/grammar_symbols";
@@ -162,10 +162,10 @@ export const terminalParsers2 : TerminalParsers<ParseState, SectionData, TokenTy
     ]);
 
 export const basic_labels : [Sym, SectionData][] = [
-    ["Operator-app", SectionDataNone(SectionName.operator_app)],
-    ["Operation-app", SectionDataNone(SectionName.operation_app)],
-    ["Brackets", SectionDataNone(SectionName.brackets)],
-    ["Var-app", SectionDataNone(SectionName.var_app)]
+    ["Operator-app", SectionDataTerm(SectionName.operator_app)],
+    ["Operation-app", SectionDataTerm(SectionName.operation_app)],
+    ["Brackets", SectionDataTerm(SectionName.brackets)],
+    ["Var-app", SectionDataTerm(SectionName.var_app)]
 ];
 
 export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle, Set<Handle>> {
@@ -328,9 +328,9 @@ export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar
     const custom_terminal_parsers : TerminalParsers<ParseState, SectionData, TokenType> = orGreedyTerminalParsers([terminalParsers1, fragments_parser, terminalParsers2]);
     //console.log("creating custom LR parser ...");
     const labels = [...basic_labels];
-    const custom_labels : [string, SectionData][] = [...customSyntax.syntactic_categories].map(sc => ["S`" + sc + "-atomic", SectionDataNone(SectionName.custom)])
+    const custom_labels : [string, SectionData][] = [...customSyntax.syntactic_categories].map(sc => ["S`" + sc + "-atomic", SectionDataTerm(SectionName.custom)])
     labels.push(...custom_labels);
-    const customLRParser = lrDP(customGrammar, labels, custom_terminal_parsers, SectionDataNone(SectionName.invalid)); 
+    const customLRParser = lrDP(customGrammar, labels, custom_terminal_parsers, SectionDataTerm(SectionName.invalid)); 
     const conflicts = customLRParser.conflicts;
     const conflict_scs : Set<Handle | null> = new Set();
     if (conflicts.size > 0) {

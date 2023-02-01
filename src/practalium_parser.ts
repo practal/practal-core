@@ -7,6 +7,7 @@ import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, Theory } 
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented } from "./things/utils";
+import { UITerm, UITermAbstrApp, UITermVarApp } from "./uiterm";
 
 export enum TokenType {
     module_name,
@@ -66,6 +67,7 @@ export enum SectionName {
     // Terms
     operation_app,
     operator_app,
+    value,
     var_app,
     brackets,
     invalid,
@@ -73,14 +75,32 @@ export enum SectionName {
 
 }
 
-export type SectionData = SectionDataNone
+export type SectionData = SectionDataNone | SectionDataTerm
+
+export type SectionName_DataNone = 
+    SectionName.theory | SectionName.axiom | SectionName.declaration | SectionName.comment | SectionName.error |
+    SectionName.syntax | SectionName.syntactic_category | SectionName.inline_latex | SectionName.display_latex |
+    SectionName.newline | SectionName.definition 
+
+export type SectionName_Term = 
+    SectionName.operation_app | SectionName.operator_app | SectionName.value | SectionName.var_app | SectionName.brackets |
+    SectionName.invalid | SectionName.custom
 
 export type SectionDataNone = {
-    type : SectionName
+    type : SectionName_DataNone
 }
 
-export function SectionDataNone(ty : SectionName) : SectionDataNone {
+export function SectionDataNone(ty : SectionName_DataNone) : SectionDataNone {
     return { type : ty };
+}
+
+export type SectionDataTerm = {
+    type : SectionName_Term
+    term? : UITerm
+}
+
+export function SectionDataTerm(ty : SectionName_Term, term? : UITerm) : SectionDataTerm {
+    return { type : ty, term : term };
 }
 
 export type ParseState = {
@@ -165,7 +185,7 @@ function totalOfDP(parser?: P) : P {
 
 const markInvalidDP : P = orDP(
     seqDP(repDP(spacesDP), tokenDP(nonspaces1L, TokenType.invalid), allOfDP(TokenType.invalid)),
-    seqDP(emptyDP(SectionDataNone(SectionName.invalid)), repDP(spacesDP)));
+    seqDP(emptyDP(SectionDataTerm(SectionName.invalid)), repDP(spacesDP)));
 
 function totalTermOfDP(parser?: P) : P {
     if (parser === undefined) return allOfDP(TokenType.invalid);
