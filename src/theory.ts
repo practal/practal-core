@@ -118,6 +118,18 @@ export class Head {
         }
         return s;
     }
+    hasBound(name : string) : boolean {
+        for (const bound of this.bounds) {
+            if (bound.str === name) return true;
+        }
+        return false;
+    }
+    hasFree(name : string) : boolean {
+        for (const free of this.frees) {
+            if (free[0].str === name) return true;
+        }
+        return false;
+    }
 }
 freeze(Head);
 
@@ -439,7 +451,7 @@ export class Theory {
             }
             freeNames.add(free.str);
             if (binders.has(free.str)) {
-                this.report(free.span, Severity.WARNING, "Free variable '" + free + "' has same name as binder.");
+                this.report(free.span, Severity.ERROR, "Free variable '" + free + "' has same name as binder.");
             }
             const args : nat[] = [];
             for (const param of params) {
@@ -501,12 +513,74 @@ export class Theory {
         this.#abstrNormals.set(info.nameDecl.normal_long, handle);
     }
 
-    addSyntaxSpec(spec : SyntaxSpec) {
+    #checkSyntaxSpec(info : AbstractionInfo, spec : SyntaxSpec) : boolean {
+        const head = info.head;
+        const bounds = new Set<string>();
+        const frees = new Set<string>();
+        let ok = true;
+        for (const fragment of spec.fragments) {
+            const kind = fragment.kind;
+            switch (kind) {
+                case SyntaxFragmentKind.text:
+                case SyntaxFragmentKind.mandatory_whitespace:
+                case SyntaxFragmentKind.optional_whitespace:
+                    break;
+                case SyntaxFragmentKind.bound_variable: {
+                    const name = fragment.name.str;
+                    if (bounds.has(name)) {
+                        this.error(fragment.name.span, "Reuse of binder.");
+                        ok = false;
+                    } else {
+                        bounds.add(name);
+                    }
+                    if (!head.hasBound(name)) {
+                        ok = false;
+                        this.error(fragment.name.span, "Unknown binder.");
+                    }
+                    break;
+                }
+                case SyntaxFragmentKind.free_variable: {
+                    const name = fragment.name.str;
+                    if (frees.has(name)) {
+                        this.error(fragment.name.span, "Reuse of free variable.");
+                        ok = false;
+                    } else {
+                        frees.add(name);
+                    }
+                    if (!head.hasFree(name)) {
+                        ok = false;
+                        this.error(fragment.name.span, "Unknown free variable.");
+                    }
+                    break;                
+                }
+                default: assertNever(kind);
+            }
+        }
+        for (const bound of head.bounds) {
+            if (!bounds.has(bound.str)) {
+                ok = false;
+                this.error(bound.span, "Binder does not appear in custom syntax.");
+            }
+        }
+        for (const free of head.frees) {
+            if (!frees.has(free[0].str)) {
+                ok = false;
+                this.error(free[0].span, "Free variable does not appear in custom syntax.");
+            }
+        }
+        return ok;
+    }
+
+    addSyntaxSpec(spec : SyntaxSpec) : boolean {
         if (this.#current === undefined) throw new Error("There is no declaration to add syntax to.");    
-        //this.report(spec.syntactic_category.span, Severity.INFO, "spec = " + spec);
-        internal = true;
-        this.#current.addSyntaxSpec(spec);
-        internal = false;
+        if (this.#checkSyntaxSpec(this.#current, spec)) {
+            internal = true;
+            this.#current.addSyntaxSpec(spec);
+            internal = false;
+            return true;
+        } else {
+            return false;
+        }
     }
 
 }

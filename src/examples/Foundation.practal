@@ -8,14 +8,14 @@ theory Foundation
     'bool ⊤ 
     'bool 𝖳
 
-\imp(lies) A B
+\imp(lies) A B 
     ' #A  ⇒  #B'quant
     ' #A  =>  #B'quant
 
 'atom > 'imp ⪫ 'prop
 
 \(for-)all x. P[x]
-    'quant ∀ #x.  #P'
+    'quant ∀ #x .  #P' 
 
 \eq(uals) A B 
     'atom #A'val  =  #B'val
