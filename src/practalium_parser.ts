@@ -7,7 +7,7 @@ import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, Theory } 
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented } from "./things/utils";
-import { UITerm, UITermAbstrApp, UITermVarApp } from "./uiterm";
+import { constructUITermFromResult, printUITerm, UITerm, UITermAbstrApp, UITermVarApp } from "./uiterm";
 
 export enum TokenType {
     module_name,
@@ -69,9 +69,11 @@ export enum SectionName {
     operator_app,
     value,
     var_app,
+    var,
     brackets,
+    term,
+    custom,
     invalid,
-    custom
 
 }
 
@@ -83,8 +85,9 @@ export type SectionName_DataNone =
     SectionName.newline | SectionName.definition 
 
 export type SectionName_Term = 
-    SectionName.operation_app | SectionName.operator_app | SectionName.value | SectionName.var_app | SectionName.brackets |
-    SectionName.invalid | SectionName.custom
+    SectionName.operation_app | SectionName.operator_app | SectionName.value | 
+    SectionName.var_app | SectionName.var |
+    SectionName.brackets | SectionName.term | SectionName.custom | SectionName.invalid 
 
 export type SectionDataNone = {
     type : SectionName_DataNone
@@ -167,7 +170,7 @@ const cheatFreeDP = cheatDP(c => c >= "A" && c <= "Z", TokenType.free_variable);
 const cheatIdDP = cheatDP(c => c >= "a" && c <= "z", TokenType.bound_variable);
 const cheatSyntaxDP = cheatDP(c => true, TokenType.syntax_fragment); 
 
-const termDP : P = useDP((lines, state) => totalTermOfDP(state.termParser));
+const termDP : P = useDP((lines, state) => totalTermOfDP(lines, state.termParser));
 
 //repDP(orDP(spacesDP, symbolsDP, abstractionDP, cheatFreeDP, cheatIdDP, cheatSyntaxDP, invalidCharDP))
 
@@ -187,7 +190,7 @@ const markInvalidDP : P = orDP(
     seqDP(repDP(spacesDP), tokenDP(nonspaces1L, TokenType.invalid), allOfDP(TokenType.invalid)),
     seqDP(emptyDP(SectionDataTerm(SectionName.invalid)), repDP(spacesDP)));
 
-function totalTermOfDP(parser?: P) : P {
+function totalTermOfDP(lines : TextLines, parser?: P) : P {
     if (parser === undefined) return allOfDP(TokenType.invalid);
     const termParser = parser;
     function parse(state : ParseState, lines : TextLines, line : number, offset : number) : DPResult<ParseState, SectionData, TokenType> {
@@ -208,6 +211,13 @@ function totalTermOfDP(parser?: P) : P {
             }
             return { state : invalidDPResult.state, result : tree };
         } else {
+            const uiterm = constructUITermFromResult(state.theory, lines, termResult);
+            if (uiterm === undefined) {
+                debug("no UITerm found");
+            } else {
+                debug("parsed UITerm: ");
+                printUITerm(state.theory, uiterm);
+            }
             return termDPResult;
         }
     }

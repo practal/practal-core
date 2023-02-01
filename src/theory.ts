@@ -322,6 +322,10 @@ export class Theory {
         return [...this.#abstractions];
     }
 
+    info(abstr : Handle) : AbstractionInfo {
+        return this.#abstractions[abstr];
+    }
+
     static mk(lines : TextLines) : Theory {
         return new Theory(lines);
     }    

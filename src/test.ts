@@ -21,7 +21,7 @@ function loadExample(name : string) : TextLines {
 
 console.log("Testing Practalium tokenizer ...");
 configureDebugging(console.log);
-const example = loadExample("NaN.practal"); //createTextLines(source.split("\n"));
+const example = loadExample("Foundation0.practal"); //createTextLines(source.split("\n"));
 console.log("-------------");
 printTextLines(example);
 console.log("-------------");

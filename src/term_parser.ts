@@ -27,9 +27,11 @@ export const basic_grammar : ExprGrammar = {
 
         rule("Atomic", "Var-app"),
         rule("Atomic", "Var"),
-        rule("Atomic", "value-id"),
-        rule("Atomic", "unknown-id"),
+        rule("Atomic", "Value"),
         rule("Atomic", "Brackets"),
+
+        rule("Value", "value-id"),
+        rule("Value", "unknown-id"),
 
         rule("Brackets",  "round-open", ows, "Term", ows, "round-close"),
 
@@ -164,8 +166,11 @@ export const terminalParsers2 : TerminalParsers<ParseState, SectionData, TokenTy
 export const basic_labels : [Sym, SectionData][] = [
     ["Operator-app", SectionDataTerm(SectionName.operator_app)],
     ["Operation-app", SectionDataTerm(SectionName.operation_app)],
+    ["Value", SectionDataTerm(SectionName.value)],
     ["Brackets", SectionDataTerm(SectionName.brackets)],
-    ["Var-app", SectionDataTerm(SectionName.var_app)]
+    ["Var-app", SectionDataTerm(SectionName.var_app)], 
+    ["Var", SectionDataTerm(SectionName.var)],
+    ["Term", SectionDataTerm(SectionName.term)]
 ];
 
 export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle, Set<Handle>> {
