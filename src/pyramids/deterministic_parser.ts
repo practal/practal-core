@@ -189,18 +189,35 @@ export function* iterateTokensFlat<S, T>(result : Result<S, T>) : Generator<Toke
     }
 }
 
-export function* iterateContentSections<S, T>(result : Result<S, T>) : Generator<Tree<S, T>> {
+export function* iterateContentSections<S, T>(result : Result<S, T>, filter? : (s:S) => boolean) : Generator<Tree<S, T>> {
     const kind = result.kind;
     switch (kind) {
         case ResultKind.TREE: 
             for (const child of result.children) {
                 if (child.kind === ResultKind.TREE) {
                     if (child.type === null) yield* iterateContentSections(child);
-                    else if (child.type !== undefined) yield child;
+                    else if (child.type !== undefined && (filter === undefined || filter(child.type))) yield child;
                 }
             }
             return;
         case ResultKind.TOKEN: 
+            return;
+        default: assertNever(kind);
+    }
+}
+
+export function* iterateContentTokens<S, T>(result : Result<S, T>, filter? : (t:T) => boolean) : Generator<Token<T>> {
+    const kind = result.kind;
+    switch (kind) {
+        case ResultKind.TREE: 
+            for (const child of result.children) {
+                for (const token of iterateTokensFlat(child)) {
+                    if (filter === undefined || filter(token.type)) yield token;
+                }
+            }
+            return;
+        case ResultKind.TOKEN: 
+            if (filter === undefined || filter(result.type)) yield result;
             return;
         default: assertNever(kind);
     }

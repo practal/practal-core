@@ -73,11 +73,12 @@ export enum SectionName {
     brackets,
     term,
     custom,
-    invalid,
+    params,
+    invalid
 
 }
 
-export type SectionData = SectionDataNone | SectionDataTerm
+export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms
 
 export type SectionName_DataNone = 
     SectionName.theory | SectionName.axiom | SectionName.declaration | SectionName.comment | SectionName.error |
@@ -88,6 +89,8 @@ export type SectionName_Term =
     SectionName.operation_app | SectionName.operator_app | SectionName.value | 
     SectionName.var_app | SectionName.var |
     SectionName.brackets | SectionName.term | SectionName.custom | SectionName.invalid 
+
+export type SectionName_Terms = SectionName.params;
 
 export type SectionDataNone = {
     type : SectionName_DataNone
@@ -104,6 +107,15 @@ export type SectionDataTerm = {
 
 export function SectionDataTerm(ty : SectionName_Term, term? : UITerm) : SectionDataTerm {
     return { type : ty, term : term };
+}
+
+export type SectionDataTerms = {
+    type : SectionName_Terms
+    terms : UITerm[]
+}
+
+export function SectionDataTerms(ty : SectionName_Terms, terms? : UITerm[]) : SectionDataTerms {
+    return { type : ty, terms : terms ?? []};
 }
 
 export type ParseState = {

@@ -1,5 +1,5 @@
 import { Shape } from "./logic/shape";
-import { ParseState, SectionData, SectionDataNone, SectionDataTerm, SectionName, TokenType } from "./practalium_parser";
+import { ParseState, SectionData, SectionDataNone, SectionDataTerm, SectionDataTerms, SectionName, TokenType } from "./practalium_parser";
 import { DetParser, eofDP, modifyResultDP, newlineDP, optDP, orDP, rep1DP, seqDP, strictTokenDP, textOfToken, Token, tokenDP } from "./pyramids/deterministic_parser";
 import { cloneExprGrammar, Expr, ExprGrammar, opt, or, rule, seq, star } from "./pyramids/expr_grammar";
 import { Sym } from "./pyramids/grammar_symbols";
@@ -170,7 +170,9 @@ export const basic_labels : [Sym, SectionData][] = [
     ["Brackets", SectionDataTerm(SectionName.brackets)],
     ["Var-app", SectionDataTerm(SectionName.var_app)], 
     ["Var", SectionDataTerm(SectionName.var)],
-    ["Term", SectionDataTerm(SectionName.term)]
+    ["Var-open", SectionDataTerm(SectionName.var)],
+    ["Term", SectionDataTerm(SectionName.term)],
+    ["Params", SectionDataTerms(SectionName.params)]
 ];
 
 export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle, Set<Handle>> {
