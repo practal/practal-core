@@ -1,7 +1,7 @@
-import { SectionData, SectionDataTerm, SectionName, TokenType } from "./practalium_parser"
-import { iterateContentSections, iterateContentTokens, iterateTokensDeep, Result, ResultKind, textOfToken, Token, Tree } from "./pyramids/deterministic_parser"
+import { printPractalResult, SectionData, SectionDataTerm, SectionName, TokenType } from "./practalium_parser"
+import { iterateContentSections, iterateContentTokens, iterateTokensDeep, printResult, Result, ResultKind, textOfToken, Token, Tree } from "./pyramids/deterministic_parser"
 import { Span, spanOfResult } from "./pyramids/span"
-import { TextLines } from "./pyramids/textlines"
+import { absoluteSpan, TextLines } from "./pyramids/textlines"
 import { Handle, Theory } from "./theory"
 import { debug } from "./things/debug"
 import { nat } from "./things/primitives"
@@ -141,6 +141,9 @@ export function printUITerm(theory : Theory, uiterm : UITerm, print : Printer = 
 }
 
 export function constructUITermFromResult(theory : Theory, lines : TextLines, result : Result<SectionData, TokenType>) : UITerm | undefined {
+    function error(span : Span, msg : string) {
+        theory.error(absoluteSpan(lines, span), msg);
+    }
     function constructMultiple(results : Result<SectionData, TokenType>[]) : UITerm[] {
         const terms : UITerm[] = [];
         for (const result of results) {
@@ -153,7 +156,7 @@ export function constructUITermFromResult(theory : Theory, lines : TextLines, re
         if (text.startsWith("\\")) text = text.slice(1);
         const abstr = theory.lookupAbstraction(text);
         if (abstr === undefined) {
-            theory.error(spanOfResult(token), "Unknown abstraction.");
+            error(spanOfResult(token), "Unknown abstraction.");
             return undefined;
         }
         return abstr;
@@ -275,7 +278,7 @@ function makeBound(v : UIVar) {
  * Returns undefined if the term could not be validated, otherwise the set of free variables. 
  * Changes the term by making variables free/bound, as discovered.
  **/
-export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | undefined {
+export function validateUITerm(theory : Theory, lines : TextLines, term : UITerm) : UIFreeVars | undefined {
 
     const freeVars : UIFreeVars = new UIFreeVars();
     const binders : VarName[] = [];
@@ -287,7 +290,7 @@ export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | un
     function validate(term : UITerm) : boolean {
         const kind = term.kind;
         switch (kind) {
-            case UITermKind.VarApp: 
+            case UITermKind.VarApp: {
                 if (term.params.length === 0 && !term.var.free) {
                     if (isBound(term.var.name, binders)) {
                         makeBound(term.var);
@@ -306,11 +309,13 @@ export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | un
                     }
                     return ok;
                 }
+            }
             case UITermKind.AbstrApp: {
                 function error(msg : string, span? : Span) {
                     if (!span && term.syntax) {
                         span = spanOfResult(term.syntax);
                     }
+                    if (span) span = absoluteSpan(lines, span);
                     theory.error(span, msg);
                     ok = false;
                 }

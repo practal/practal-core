@@ -47,6 +47,15 @@ export function endOffsetExclusiveOf<S, T>(result : Result<S, T>) : number {
     }
 }
 
+export function startLineOf<S, T>(result : Result<S, T>) : number {
+    const kind = result.kind;
+    switch (kind) {
+        case ResultKind.TREE: return result.startLine;
+        case ResultKind.TOKEN: return result.line;
+        default: assertNever(kind);
+    }
+}
+
 export function endLineOf<S, T>(result : Result<S, T>) : number {
     const kind = result.kind;
     switch (kind) {

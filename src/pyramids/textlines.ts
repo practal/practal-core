@@ -1,8 +1,16 @@
 import { Lexer, spacesL } from "./lexer";
+import { Span } from "./span";
 
 export interface TextLines {
     lineCount : number
     lineAt(line : number) : string
+    absolute(line: number, offset : number) : [number, number]
+}
+
+export function absoluteSpan(lines : TextLines, span : Span) : Span {
+    const [l1, o1] = lines.absolute(span.startLine, span.startOffsetInclusive);
+    const [l2, o2] = lines.absolute(span.endLine, span.endOffsetExclusive);
+    return new Span(l1, o1, l2, o2);
 }
 
 export function isValidPosition(lines : TextLines, line : number, offset : number) : boolean {
@@ -57,6 +65,10 @@ class TextLinesImpl implements TextLines {
         return this.lines[line];
     }
 
+    absolute(line : number, offset : number) : [number, number] {
+        return [line, offset];
+    }
+
 }
 
 export function createTextLines(lines : string[]) : TextLines {
@@ -65,6 +77,8 @@ export function createTextLines(lines : string[]) : TextLines {
 
 /** Represents a (possibly modified) window into an existing TextLines. */
 export class TextLinesWindow implements TextLines {
+
+    source : TextLines
 
     /** The first line in the window corresponds to the startLine in the source. */
     startLine : number  
@@ -78,8 +92,9 @@ export class TextLinesWindow implements TextLines {
     /** Same as lines.length */
     lineCount : number
 
-    constructor(startLine : number, lines : string[], offsets : number[]) {
+    constructor(source : TextLines, startLine : number, lines : string[], offsets : number[]) {
         if (lines.length != offsets.length) throw new Error("TextLinesWindow: number of lines and offsets do not match");
+        this.source = source;
         this.startLine = startLine;
         this.lines = lines;
         this.offsets = offsets;
@@ -95,7 +110,12 @@ export class TextLinesWindow implements TextLines {
 
     lineAt(line: number): string {
         return this.lines[line];
-    }    
+    }   
+    
+    absolute(line: number, offset: number): [number, number] {
+        const delta = (line >= 0 && line < this.offsets.length) ? this.offsets[line] : 0;
+        return this.source.absolute(line + this.startLine, offset + delta);
+    }
 
 }
 
@@ -157,7 +177,7 @@ export function cutoutTextLines(source : TextLines, line : number, offset : numb
             lines.push(spaces + text.slice(skipped));
         }
     }
-    return new TextLinesWindow(startLine, lines, offsets);
+    return new TextLinesWindow(source, startLine, lines, offsets);
 }
 
 export function cutoutRangeOfTextLines(source : TextLines, startLineInclusive : number, endLineExclusive : number) : TextLines {
@@ -166,6 +186,9 @@ export function cutoutRangeOfTextLines(source : TextLines, startLineInclusive : 
         lineAt: function (line: number): string {
             line += startLineInclusive;
             return source.lineAt(line);
+        },
+        absolute: function(line: number, offset: number): [number, number] {
+            return source.absolute(line + startLineInclusive, offset);
         }
     };
     return lines;    

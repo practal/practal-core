@@ -6,7 +6,7 @@ import { TextLines } from "./pyramids/textlines";
 import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, Theory } from "./theory";
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
-import { assertTrue, force, internalError, notImplemented } from "./things/utils";
+import { assertTrue, force, internalError, notImplemented, Printer } from "./things/utils";
 import { constructUITermFromResult, printUITerm, UITerm, UITermAbstrApp, UITermVarApp, validateUITerm } from "./uiterm";
 
 export enum TokenType {
@@ -160,6 +160,12 @@ export type P = DetParser<ParseState, SectionData, TokenType>
 export type S = Section<ParseState, SectionData, TokenType>
 export type R = DPResult<ParseState, SectionData, TokenType>
 
+export function printPractalResult(lines : TextLines, result : Result<SectionData, TokenType>, print : Printer = debug) {
+    function nameOfS(type : SectionData) : string { return SectionName[type.type]; }
+    function nameOfT(type : TokenType) : string { return TokenType[type]; }
+    printResult(print, nameOfS, nameOfT, lines, result);
+}
+
 function isIdLetter(c : string) : boolean {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
@@ -251,7 +257,7 @@ function totalTermOfDP(lines : TextLines, parser?: P) : P {
         } else {
             const uiterm = constructUITermFromResult(state.theory, lines, termResult);
             termResult.type = SectionDataTerm(SectionName.term, uiterm);
-            if (uiterm) validateUITerm(state.theory, uiterm);
+            if (uiterm) validateUITerm(state.theory, lines, uiterm);
             return termDPResult;
         }
     }

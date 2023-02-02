@@ -1,6 +1,6 @@
 import { int, nat } from "../things/primitives";
 import { assertNever, force, internalError, notImplemented } from "../things/utils";
-import { DetParser, DPResult, endLineOf, endOf, eofDP, Result, ResultKind, Tree } from "./deterministic_parser";
+import { DetParser, DPResult, endLineOf, endOf, eofDP, Result, ResultKind, startLineOf, Tree } from "./deterministic_parser";
 import { TextLines } from "./textlines";
 import { ActionPlan, ActionPlanKind, planActions, planContainsError, printActionPlan, printActions } from "./actionplan";
 import { convertExprGrammar, ExprGrammar } from "./expr_grammar";
@@ -231,17 +231,21 @@ export function lrDP<State, S, T>(exprGrammar : ExprGrammar, nonterminal_labels 
                             internalError("Could not resolve handle to nonterminal.");
                         }
                         const s = nonterminals.get(nonterminal[0]) ?? null;
+                        let startLine = line;
+                        let startOffsetInclusive = offset;
                         let endLine = line;
                         let endOffsetExclusive = offset;
                         if (rhs.length > 0) {
+                            startLine = startLineOf(rhs[0]);
+                            startOffsetInclusive = rhs[0].startOffsetInclusive;
                             [endLine, endOffsetExclusive] = endOf(rhs[rhs.length - 1]);
                         }
                         //if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(endOffsetExclusive)) throw new Error("!!");
                         const tree : Tree<S, T> = {
                             kind: ResultKind.TREE,
                             type: s,
-                            startLine: line,
-                            startOffsetInclusive: offset,
+                            startLine: startLine,
+                            startOffsetInclusive: startOffsetInclusive,
                             endLine: endLine,
                             endOffsetExclusive: endOffsetExclusive,
                             children: rhs

@@ -23,6 +23,10 @@ class TextDocumentLines implements TextLines {
         return this.document.lineAt(line).text;    
     }
 
+    absolute(line: number, offset: number): [number, number] {
+        return [line, offset];
+    }
+
 }
 
 //export let output = vscode.window.createOutputChannel("Tokenizer");
