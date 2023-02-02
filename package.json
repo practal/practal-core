@@ -67,7 +67,7 @@
             "practal-primary-keyword": {"bold": true },
             "practal-round-braces": "#969896",
             "practal-free-variable": { "bold" : true, "italic": false },
-            "practal-bound-variable": { "bold": false, "italic": true },
+            "practal-bound-variable": { "bold": false, "italic": true, "foreground": "#63D6C6" },
             "practal-syntactic-category": { "italic": true },
             "practal-syntactic-category-keyword": { "italic": true },   
             "practal-syntax-mandatory-space": { "underline": true },
