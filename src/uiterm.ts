@@ -1,12 +1,16 @@
 import { SectionData, SectionDataTerm, SectionName, TokenType } from "./practalium_parser"
 import { iterateContentSections, iterateContentTokens, iterateTokensDeep, Result, ResultKind, textOfToken, Token, Tree } from "./pyramids/deterministic_parser"
-import { spanOfResult } from "./pyramids/span"
+import { Span, spanOfResult } from "./pyramids/span"
 import { TextLines } from "./pyramids/textlines"
 import { Handle, Theory } from "./theory"
 import { debug } from "./things/debug"
+import { nat } from "./things/primitives"
 import { assertNever, force, internalError, Printer } from "./things/utils"
 
+/** Terms designed to work well together with the user interface. */
 export type UITerm = UITermVarApp | UITermAbstrApp
+
+export type VarName = string
 
 export enum UITermKind {
     VarApp,
@@ -22,7 +26,7 @@ export type UITermVarApp = {
 
 export type UIVar = {
     free : boolean,
-    name : string,
+    name : VarName,
     syntax? : Token<TokenType>
 }
 
@@ -227,4 +231,116 @@ export function constructUITermFromResult(theory : Theory, lines : TextLines, re
     }
     const terms = construct(result);
     if (terms.length === 1) return terms[0]; else return undefined;
+}
+
+export class UIFreeVars {
+
+    #vars : Map<VarName, Set<nat>>
+    
+    constructor() {
+        this.#vars = new Map();
+    }
+
+    add(name : VarName, arity : nat) {
+        const arities = this.#vars.get(name);
+        if (arities === undefined) {
+            this.#vars.set(name, new Set([arity]));
+        } else {
+            arities.add(arity);
+        }
+    }
+
+}
+
+function makeFree(v : UIVar) {
+    v.free = true;
+    if (v.syntax) {
+        v.syntax.type = TokenType.free_variable;
+    }
+}
+
+
+function makeBound(v : UIVar) {
+    v.free = false;
+    if (v.syntax) {
+        v.syntax.type = TokenType.bound_variable;
+    }
+}
+
+/** 
+ * Validates a term with respect to a theory, writing errors to the theory. 
+ * Returns undefined if the term could not be validated, otherwise the set of free variables. 
+ * Changes the term by making variables free/bound, as discovered.
+ **/
+export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | undefined {
+
+    const freeVars : UIFreeVars = new UIFreeVars();
+    const binders : VarName[] = [];
+
+    function isBound(v : VarName, binders : VarName[]) : boolean {
+        return binders.indexOf(v) >= 0;
+    }
+
+    function validate(term : UITerm) : boolean {
+        const kind = term.kind;
+        switch (kind) {
+            case UITermKind.VarApp: 
+                if (term.params.length === 0 && !term.var.free) {
+                    if (isBound(term.var.name, binders)) {
+                        makeBound(term.var);
+                        return true;
+                    } else {
+                        freeVars.add(term.var.name, 0);
+                        makeFree(term.var);
+                        return true;
+                    }
+                } else {
+                    freeVars.add(term.var.name, term.params.length);
+                    makeFree(term.var);
+                    let ok = true;
+                    for (const p of term.params) {
+                        if (!validate(p)) ok = false;
+                    }
+                    return ok;
+                }
+            case UITermKind.AbstrApp:
+                const info = theory.info(term.abstr);
+                const name = "\\" + info.nameDecl.long;
+                const shape = info.shape;
+                let ok = true;
+                function error(msg : string, span? : Span) {
+                    if (!span && term.syntax) {
+                        span = spanOfResult(term.syntax);
+                    }
+                    theory.error(span, msg);
+                    ok = false;
+                }
+                if (shape.arity !== term.params.length) {
+                    error("Abstraction " + name + " expects " + shape.arity + " parameters, but " + term.params.length + " were found.");
+                }
+                if (shape.valence !== term.bounds.length) {
+                    error("Abstraction " + name + " binds " + shape.valence + " variables, but " + term.bounds.length + " binders were found.");
+                }
+                const varnames : VarName[] = [];
+                for (const b of term.bounds) {
+                    if (isBound(b.name, varnames)) {
+                        let span : Span | undefined = undefined;
+                        if (b.syntax) span = spanOfResult(b.syntax);
+                        error("Duplicate binder " + b.name + ".", span);
+                    }
+                    varnames.push(b.name);
+                }
+                if (!ok) return false;
+                for (const [i, param] of term.params.entries()) {
+                    const param_binders = shape.shape[i].map(k => varnames[k]);
+                    binders.push(...param_binders); 
+                    if (!validate(param)) ok = false;
+                    binders.splice(binders.length - param_binders.length, param_binders.length);
+                }
+                return ok;
+            default: assertNever(kind);
+        }
+    }
+
+    if (!validate(term)) return undefined; else return freeVars;
 }

@@ -7,7 +7,7 @@ import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, Theory } 
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented } from "./things/utils";
-import { constructUITermFromResult, printUITerm, UITerm, UITermAbstrApp, UITermVarApp } from "./uiterm";
+import { constructUITermFromResult, printUITerm, UITerm, UITermAbstrApp, UITermVarApp, validateUITerm } from "./uiterm";
 
 export enum TokenType {
     module_name,
@@ -251,6 +251,7 @@ function totalTermOfDP(lines : TextLines, parser?: P) : P {
         } else {
             const uiterm = constructUITermFromResult(state.theory, lines, termResult);
             termResult.type = SectionDataTerm(SectionName.term, uiterm);
+            if (uiterm) validateUITerm(state.theory, uiterm);
             return termDPResult;
         }
     }

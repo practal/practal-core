@@ -314,11 +314,12 @@ export class Theory {
         freeze(this);
     } 
         
-    report(span : Span, severity : Severity, msg : string) {
+    report(span : Span | undefined, severity : Severity, msg : string) {
+        if (!span) span = new Span(0, 0, 0, 0);
         this.#diagnoses.add(new Diagnosis(span, severity, msg));
     } 
 
-    error(span : Span, msg : string) {
+    error(span : Span | undefined, msg : string) {
         this.report(span, Severity.ERROR, msg);
     }
 
