@@ -111,7 +111,10 @@ export function printUITerm(theory : Theory, uiterm : UITerm, print : Printer = 
                 break;
             case UITermKind.AbstrApp: {
                 const info = theory.info(uiterm.abstr);
-                emit("\\" + info.nameDecl.short);
+                if (info !== undefined) 
+                    emit("\\" + info.nameDecl.short);
+                else 
+                    emit("\\??");
                 if (uiterm.params.length > 0) {
                     if (uiterm.bounds.length > 0) {
                         for (const bound of uiterm.bounds) {
@@ -303,11 +306,7 @@ export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | un
                     }
                     return ok;
                 }
-            case UITermKind.AbstrApp:
-                const info = theory.info(term.abstr);
-                const name = "\\" + info.nameDecl.long;
-                const shape = info.shape;
-                let ok = true;
+            case UITermKind.AbstrApp: {
                 function error(msg : string, span? : Span) {
                     if (!span && term.syntax) {
                         span = spanOfResult(term.syntax);
@@ -315,6 +314,14 @@ export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | un
                     theory.error(span, msg);
                     ok = false;
                 }
+                const info = theory.info(term.abstr);
+                if (info === undefined) {
+                    error("Unknown abstraction.");
+                    return false;
+                }
+                const name = "\\" + info.nameDecl.long;
+                const shape = info.shape;
+                let ok = true;
                 if (shape.arity !== term.params.length) {
                     error(name + " expects " + shape.arity + " parameters, but " + term.params.length + " were found.");
                 }
@@ -338,6 +345,7 @@ export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | un
                     binders.splice(binders.length - param_binders.length, param_binders.length);
                 }
                 return ok;
+            }
             default: assertNever(kind);
         }
     }

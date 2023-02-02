@@ -335,8 +335,11 @@ export class Theory {
         return [...this.#abstractions];
     }
 
-    info(abstr : Handle) : AbstractionInfo {
-        return this.#abstractions[abstr];
+    info(abstr : Handle) : AbstractionInfo | undefined {
+        if (nat.is(abstr) && abstr < this.#abstractions.length)
+            return this.#abstractions[abstr];
+        else    
+            return undefined;
     }
 
     static mk(lines : TextLines) : Theory {
