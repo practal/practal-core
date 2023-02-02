@@ -64,8 +64,8 @@ function diagnose(theory : Theory, lines : TextLines, diagnoses : Diagnosis[], r
             case ResultKind.TOKEN: 
                 if (result.type === TokenType.syntactic_category_keyword || result.type === TokenType.syntactic_category) {
                     const text = textOfToken(lines, result).slice(1);
-                    if (text !== "" && theory.lookupSyntacticCategory(text) === undefined) {
-                        diagnoses.push(new Diagnosis(spanOfResult(result), Severity.ERROR, "Unknown syntactic category."));    
+                    if (text !== "" && !(text.indexOf("(") >= 0) && theory.lookupSyntacticCategory(text) === undefined) {
+                        diagnoses.push(new Diagnosis(spanOfResult(result), Severity.ERROR, "Unknown syntactic category: " + text));    
                     }            
                 }
                 break;
