@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.5] - 2023-02-02
+
+### Added
+
+- Parsed terms are constructed as UITerms and validated.
+- Free and bound variables are properly recognized now, and visually distinguished.
+- Definitions are checked.
+
 ## [0.0.4] - 2023-02-01
 
 ### Changed
