@@ -250,12 +250,7 @@ function totalTermOfDP(lines : TextLines, parser?: P) : P {
             return { state : invalidDPResult.state, result : tree };
         } else {
             const uiterm = constructUITermFromResult(state.theory, lines, termResult);
-            if (uiterm === undefined) {
-                debug("no UITerm found");
-            } else {
-                debug("parsed UITerm: ");
-                printUITerm(state.theory, uiterm);
-            }
+            termResult.type = SectionDataTerm(SectionName.term, uiterm);
             return termDPResult;
         }
     }
