@@ -316,10 +316,10 @@ export function validateUITerm(theory : Theory, term : UITerm) : UIFreeVars | un
                     ok = false;
                 }
                 if (shape.arity !== term.params.length) {
-                    error("Abstraction " + name + " expects " + shape.arity + " parameters, but " + term.params.length + " were found.");
+                    error(name + " expects " + shape.arity + " parameters, but " + term.params.length + " were found.");
                 }
                 if (shape.valence !== term.bounds.length) {
-                    error("Abstraction " + name + " binds " + shape.valence + " variables, but " + term.bounds.length + " binders were found.");
+                    error(name + " binds " + shape.valence + " variables, but " + term.bounds.length + " binders were found.");
                 }
                 const varnames : VarName[] = [];
                 for (const b of term.bounds) {
