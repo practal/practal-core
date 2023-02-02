@@ -608,6 +608,14 @@ function processDeclaration(lines : TextLines, result : R) : R {
             const spec = readSyntaxSpec(lines, [...iterateResultsDeep(s => s && s.type === SectionName.newline, section)]);
             if (spec === undefined) return undefined;
             result.state.theory.addSyntaxSpec(spec);
+        } else if (section.kind === ResultKind.TREE && section.type?.type === SectionName.definition) {
+            const terms = [...iterateContentSections(section, s => s.type === SectionName.term)];
+            if (terms.length === 1) {
+                const term = terms[0].type as SectionDataTerm;
+                if (term.term && term.term.freeVars) {
+                    result.state.theory.addDefinition(lines, term.term);
+                }
+            }
         }
     }
     result.state.theory.endDeclaration();     

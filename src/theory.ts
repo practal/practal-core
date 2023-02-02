@@ -1,10 +1,12 @@
 import { isConstId, normalConstId, splitIdDecl } from "./identifier";
 import { Shape } from "./logic/shape";
 import { OnlineDAG } from "./things/online_dag";
-import { Span, SpanStr } from "./pyramids/span";
-import { TextLines } from "./pyramids/textlines";
+import { Span, spanOfResult, SpanStr } from "./pyramids/span";
+import { absoluteSpan, TextLines } from "./pyramids/textlines";
 import { nat } from "./things/primitives";
 import { assertNever, force, freeze, notImplemented, privateConstructor } from "./things/utils";
+import { UITerm } from "./uiterm";
+import { debug } from "./things/debug";
 
 export type Handle = nat
 
@@ -268,6 +270,7 @@ export class AbstractionInfo {
     shape : Shape
     syntacticCategory : Handle
     #syntax_specs : SyntaxSpec[]
+    #definition : UITerm | undefined;
 
     constructor(head : Head, nameDecl : NameDecl, shape : Shape, syntacticCategory : Handle) {
         this.head = head;
@@ -275,12 +278,22 @@ export class AbstractionInfo {
         this.shape = shape;
         this.syntacticCategory = syntacticCategory;
         this.#syntax_specs = [];
+        this.#definition = undefined;
         freeze(this);
     }
 
     addSyntaxSpec(spec : SyntaxSpec) {
         checkInternal();
         this.#syntax_specs.push(spec);
+    }
+
+    addDefinition(definition : UITerm) {
+        checkInternal();
+        this.#definition = definition;
+    }
+
+    hasDefinition() : boolean {
+        return this.#definition !== undefined;
     }
 
     get syntax_specs() : SyntaxSpec[] {
@@ -587,6 +600,34 @@ export class Theory {
         }
     }
 
+    #checkDefinition(lines : TextLines, info : AbstractionInfo, body : UITerm) : boolean {
+        if (!body.freeVars) throw new Error("body has not been validated, validate first");
+        const frees = info.head.frees;
+        let ok = true;
+        for (const [free, arity] of body.freeVars) {
+            if (frees.findIndex(value => value[0].str === free && value[1].length === arity) < 0) {
+                ok = false;
+                let span = info.head.abstraction.span;
+                if (body.syntax) {
+                    span = absoluteSpan(lines, spanOfResult(body.syntax));
+                }
+                this.error(span, "Variable " + free + " of arity " + arity + " appears free in definition body.");
+            }
+        }
+        return ok;
+    }
+
+    addDefinition(lines : TextLines, body : UITerm) : boolean {
+        if (this.#current === undefined) throw new Error("There is no declaration to add a definition to.");    
+        if (this.#checkDefinition(lines, this.#current, body)) {
+            internal = true;
+            this.#current.addDefinition(body);
+            internal = false;
+            return true;
+        } else {
+            return false;
+        }        
+    }
+
 }
 freeze(Theory);
-

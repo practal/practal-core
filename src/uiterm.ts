@@ -7,10 +7,42 @@ import { debug } from "./things/debug"
 import { nat } from "./things/primitives"
 import { assertNever, force, internalError, Printer } from "./things/utils"
 
+export type VarName = string
+
+export class UIFreeVars implements Iterable<[VarName, nat]> {
+
+    #vars : Map<VarName, Set<nat>>
+    
+    constructor() {
+        this.#vars = new Map();
+    }
+
+    [Symbol.iterator](): Iterator<[VarName, nat]> {
+        const self = this;
+        function* it() : Generator<[VarName, nat]> {
+            for (const [v, arities] of self.#vars) {
+                for (const arity of arities) {
+                    yield [v, arity];
+                }
+            }
+        }
+        return it();
+    }
+
+    add(name : VarName, arity : nat) {
+        const arities = this.#vars.get(name);
+        if (arities === undefined) {
+            this.#vars.set(name, new Set([arity]));
+        } else {
+            arities.add(arity);
+        }
+    }
+
+
+}
+
 /** Terms designed to work well together with the user interface. */
 export type UITerm = UITermVarApp | UITermAbstrApp
-
-export type VarName = string
 
 export enum UITermKind {
     VarApp,
@@ -21,7 +53,8 @@ export type UITermVarApp = {
     kind : UITermKind.VarApp,
     var : UIVar,
     params : UITerm[],
-    syntax? : Tree<SectionData, TokenType>
+    syntax? : Tree<SectionData, TokenType>,
+    freeVars? : UIFreeVars
 }
 
 export type UIVar = {
@@ -35,7 +68,8 @@ export type UITermAbstrApp = {
     abstr : Handle,
     bounds : UIVar[],
     params : UITerm[],
-    syntax? : Tree<SectionData, TokenType>
+    syntax? : Tree<SectionData, TokenType>,
+    freeVars? : UIFreeVars
 }
 
 export function mkUITermValue(abstr : Handle, syntax? : Tree<SectionData, TokenType>) : UITermAbstrApp {
@@ -239,24 +273,6 @@ export function constructUITermFromResult(theory : Theory, lines : TextLines, re
     if (terms.length === 1) return terms[0]; else return undefined;
 }
 
-export class UIFreeVars {
-
-    #vars : Map<VarName, Set<nat>>
-    
-    constructor() {
-        this.#vars = new Map();
-    }
-
-    add(name : VarName, arity : nat) {
-        const arities = this.#vars.get(name);
-        if (arities === undefined) {
-            this.#vars.set(name, new Set([arity]));
-        } else {
-            arities.add(arity);
-        }
-    }
-
-}
 
 function makeFree(v : UIVar) {
     v.free = true;
@@ -264,7 +280,6 @@ function makeFree(v : UIVar) {
         v.syntax.type = TokenType.free_variable;
     }
 }
-
 
 function makeBound(v : UIVar) {
     v.free = false;
@@ -355,5 +370,8 @@ export function validateUITerm(theory : Theory, lines : TextLines, term : UITerm
         }
     }
 
-    if (!validate(term)) return undefined; else return freeVars;
+    if (!validate(term)) return undefined; else {
+        term.freeVars = freeVars;
+        return freeVars;
+    }
 }
