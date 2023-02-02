@@ -78,7 +78,7 @@ export enum SectionName {
 
 }
 
-export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms
+export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms | SectionDataCustom
 
 export type SectionName_DataNone = 
     SectionName.theory | SectionName.axiom | SectionName.declaration | SectionName.comment | SectionName.error |
@@ -88,7 +88,7 @@ export type SectionName_DataNone =
 export type SectionName_Term = 
     SectionName.operation_app | SectionName.operator_app | SectionName.value | 
     SectionName.var_app | SectionName.var |
-    SectionName.brackets | SectionName.term | SectionName.custom | SectionName.invalid 
+    SectionName.brackets | SectionName.term | SectionName.invalid 
 
 export type SectionName_Terms = SectionName.params;
 
@@ -116,6 +116,32 @@ export type SectionDataTerms = {
 
 export function SectionDataTerms(ty : SectionName_Terms, terms? : UITerm[]) : SectionDataTerms {
     return { type : ty, terms : terms ?? []};
+}
+
+export type SectionDataCustom = {
+    type : SectionName.custom,
+    abstr : Handle,
+    frees : Map<nat, nat>, // n -> m maps n-th free variable in head to m-th term
+    bounds : Map<nat, nat>, // n -> m maps n-th binder in head to m-th bound-var
+}
+
+export function SectionDataCustom(abstr : Handle, head : Head, frees : Map<string, nat>, bounds : Map<string, nat>) : SectionDataCustom {
+    const frees_converted : Map<nat, nat> = new Map();
+    const bounds_converted : Map<nat, nat> = new Map();
+    for (const [f, free] of head.frees.entries()) {
+        const index = force(frees.get(free[0].str));
+        frees_converted.set(f, index);
+    }
+    for (const [b, bound] of head.bounds.entries()) {
+        const index = force(bounds.get(bound.str));
+        bounds_converted.set(b, index);
+    }
+    return {
+        type : SectionName.custom,
+        abstr : abstr,
+        frees : frees_converted,
+        bounds : bounds_converted
+    };
 }
 
 export type ParseState = {

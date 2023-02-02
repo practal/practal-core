@@ -1,5 +1,5 @@
 import { Shape } from "./logic/shape";
-import { ParseState, SectionData, SectionDataNone, SectionDataTerm, SectionDataTerms, SectionName, TokenType } from "./practalium_parser";
+import { ParseState, SectionData, SectionDataCustom, SectionDataNone, SectionDataTerm, SectionDataTerms, SectionName, TokenType } from "./practalium_parser";
 import { DetParser, eofDP, modifyResultDP, newlineDP, optDP, orDP, rep1DP, seqDP, strictTokenDP, textOfToken, Token, tokenDP } from "./pyramids/deterministic_parser";
 import { cloneExprGrammar, Expr, ExprGrammar, opt, or, rule, seq, star } from "./pyramids/expr_grammar";
 import { Sym } from "./pyramids/grammar_symbols";
@@ -208,10 +208,11 @@ export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle
     return result;
 }
 
-export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, rhs : Expr}[], texts : Map<string, nat>, syntactic_categories : Set<Handle> } {
-    const rules : { lhs : Sym, rhs : Expr}[] = [];
+export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, rhs : Expr}[], texts : Map<string, nat>, syntactic_categories : Set<Handle>, labels : Map<string, SectionData> } {
+    const rules : { lhs : Sym, rhs : Expr, bounds? : Map<string, nat>, frees? : Map<string, nat>}[] = [];
     const texts : Map<string, nat> = new Map();
     const syntactic_categories : Set<nat> = new Set();
+    const labels : Map<string, SectionData> = new Map();
 
     function error(span : Span, msg : string) {
         theory.error(span, msg);
@@ -246,7 +247,7 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     }
 
     const abstractions = theory.abstractions;
-    for (const abstraction of abstractions) {
+    for (const [abstr_handle, abstraction] of abstractions.entries()) {
         const specs = abstraction.syntax_specs;
         for (let i = 0; i < specs.length; i++) {
             const spec = specs[i];
@@ -256,8 +257,8 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
                 continue;
             }
             const rhs : Expr[] = [];
-            const used_bounds : Set<string> = new Set();
-            const used_vars : Set<string> = new Set();
+            const used_bounds : Map<string, nat> = new Map();
+            const used_vars : Map<string, nat> = new Map();
             for (const fragment of spec.fragments) {
                 const kind = fragment.kind;
                 switch (kind) {
@@ -273,14 +274,14 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
                             break;
                         }
                         rhs.push("bound-var");
-                        used_bounds.add(fragment.name.str);
+                        used_bounds.set(fragment.name.str, used_bounds.size);
                         break;
                     case SyntaxFragmentKind.free_variable:
                         if (used_vars.has(fragment.name.str)) {
                             error(fragment.name.span, "Free variables cannot be reused.");
                             break;
                         }
-                        used_vars.add(fragment.name.str);
+                        used_vars.set(fragment.name.str, used_vars.size);
                         if (fragment.syntactic_category === undefined) {
                             rhs.push(sc_greater(sc))
                         } else {
@@ -302,7 +303,10 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
                     default: assertNever(kind);
                 }
             }
-            addRule(sc_atomic(sc), ...rhs);
+            const A = "A`" + abstr_handle + "-" + i;
+            labels.set(A, SectionDataCustom(abstr_handle, abstraction.head, used_vars, used_bounds));
+            addRule(A, ...rhs);
+            addRule(sc_atomic(sc), A);
         }
         
     }
@@ -319,7 +323,7 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
         addRule("Term", sc_atomic(sc));
     }
 
-    return { rules : rules, texts : texts, syntactic_categories : syntactic_categories };
+    return { rules : rules, texts : texts, syntactic_categories : syntactic_categories, labels : labels };
 }
 
 export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar, parser : P, syntactic_categories_with_Conflicts : Set<Handle | null> } {
@@ -334,9 +338,7 @@ export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar
     const fragments_parser : TerminalParsers<ParseState, SectionData, TokenType> = mkTerminalParsers(texts.map(t => ["§" + t[1], tokenDP(literalL(t[0]), TokenType.custom_syntax)]));
     const custom_terminal_parsers : TerminalParsers<ParseState, SectionData, TokenType> = orGreedyTerminalParsers([terminalParsers1, fragments_parser, terminalParsers2]);
     //console.log("creating custom LR parser ...");
-    const labels = [...basic_labels];
-    const custom_labels : [string, SectionData][] = [...customSyntax.syntactic_categories].map(sc => ["S`" + sc + "-atomic", SectionDataTerm(SectionName.custom)])
-    labels.push(...custom_labels);
+    const labels = [...basic_labels, ...customSyntax.labels];
     const customLRParser = lrDP(customGrammar, labels, custom_terminal_parsers, SectionDataTerm(SectionName.invalid)); 
     const conflicts = customLRParser.conflicts;
     const conflict_scs : Set<Handle | null> = new Set();

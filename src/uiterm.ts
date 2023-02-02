@@ -4,7 +4,7 @@ import { spanOfResult } from "./pyramids/span"
 import { TextLines } from "./pyramids/textlines"
 import { Handle, Theory } from "./theory"
 import { debug } from "./things/debug"
-import { assertNever, internalError, Printer } from "./things/utils"
+import { assertNever, force, internalError, Printer } from "./things/utils"
 
 export type UITerm = UITermVarApp | UITermAbstrApp
 
@@ -169,7 +169,21 @@ export function constructUITermFromResult(theory : Theory, lines : TextLines, re
                 if (type === null) return constructMultiple(result.children);
                 const sectionname = type.type;
                 switch (sectionname) {
-                    case SectionName.custom: return [];
+                    case SectionName.custom: {
+                        const binder_tokens = [...iterateContentTokens(result, t => t === TokenType.bound_variable)];
+                        const binders : UIVar[] = [];
+                        for (let i = 0; i < binder_tokens.length; i++) {
+                            let j = force(type.bounds.get(i));
+                            binders.push(mkUIVar(lines, binder_tokens[j]));
+                        }
+                        const term_sections = [...iterateContentSections(result, s => s.type === SectionName.custom)];
+                        const terms : UITerm[] = [];
+                        for (let i = 0; i < term_sections.length; i++) {
+                            let j = force(type.frees.get(i));
+                            terms.push(...construct(term_sections[j]));
+                        }
+                        return [mkUITermAbstrApp(type.abstr, binders, terms, result)];
+                    }
                     case SectionName.term: return constructMultiple(result.children);
                     case SectionName.params: return constructMultiple(result.children);
                     case SectionName.brackets: return constructMultiple(result.children);
