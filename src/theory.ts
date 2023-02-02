@@ -1,4 +1,4 @@
-import { isConstId, normalConstId, splitIdDecl } from "./identifier";
+import { isConstId, normalConstId, normalConstIdRemoveHyphens, splitIdDecl } from "./identifier";
 import { Shape } from "./logic/shape";
 import { OnlineDAG } from "./things/online_dag";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
@@ -53,17 +53,15 @@ export class NameDecl {
     decl : string
     short : string
     long : string
-    normal_short : string
-    normal_long : string
+    normals : Set<string>
     
-    private constructor(span : Span, decl : string, short : string, long : string, normal_short : string, normal_long : string) {
+    private constructor(span : Span, decl : string, short : string, long : string, normals : string[]) {
         if (!NameDecl.#internal) privateConstructor("NameDecl");
         this.span = span;
         this.decl = decl;
         this.short = short;
         this.long = long;
-        this.normal_short = normal_short;
-        this.normal_long = normal_long;
+        this.normals = new Set(normals);
         freeze(this);
     }
 
@@ -73,7 +71,7 @@ export class NameDecl {
 
     matches(name : string) : boolean {
         const n = normalConstId(name);
-        return n === this.normal_long || n === this.normal_short;
+        return this.normals.has(normalConstId(name));
     }
 
     static mk(span : Span, decl : string) : NameDecl | undefined {
@@ -81,10 +79,12 @@ export class NameDecl {
         if (split === undefined) return undefined;
         if (!isConstId(split.short)) return undefined;
         if (!isConstId(split.long)) return undefined;
-        const normal_short = normalConstId(split.short);
-        const normal_long = normalConstId(split.long);
+        const normal_short1 = normalConstId(split.short);
+        const normal_short2 = normalConstIdRemoveHyphens(split.short);
+        const normal_long1 = normalConstId(split.long);
+        const normal_long2 = normalConstIdRemoveHyphens(split.long);
         NameDecl.#internal = true;
-        const nameDecl = new NameDecl(span, decl, split.short, split.long, normal_short, normal_long);
+        const nameDecl = new NameDecl(span, decl, split.short, split.long, [normal_short1, normal_short2, normal_long1, normal_long2]);
         NameDecl.#internal = false;
         return nameDecl;
     }
@@ -393,8 +393,9 @@ export class Theory {
         const handle = this.#syntacticCategories.length;
         const info = new SyntacticCategoryInfo(decl);
         this.#syntacticCategories.push(info);
-        this.#scNormals.set(decl.normal_short, handle);
-        this.#scNormals.set(decl.normal_long, handle);
+        for (const normal of decl.normals) {
+            this.#scNormals.set(normal, handle);
+        }
         this.#online_dag.addVertex(handle);
         return handle;
     }
@@ -405,12 +406,19 @@ export class Theory {
             this.error(span, "Invalid syntactic category declaration '" + decl + "'.");
             return undefined;
         }
-        const short = this.#scNormals.get(nameDecl.normal_short);
-        const long = this.#scNormals.get(nameDecl.normal_long);
-        if (short === undefined && long === undefined) {
+        const normals = nameDecl.normals;
+        let defined = 0;
+        let handle = 0;
+        for (const n of normals) {
+            const h = this.#scNormals.get(n);
+            if (h !== undefined)  {
+                handle = h;
+                defined += 1;
+            }
+        }
+        if (defined === 0) {
             return this.#addSyntacticCategory(nameDecl);
         }
-        const handle = force(short ?? long);
         if (isNecessarilyDeclaration || nameDecl.isDeclaration) {
             this.error(span, "Syntactic category is already declared as '" + this.#syntacticCategories[handle].decl.decl + "'.");
             return undefined;
@@ -506,13 +514,13 @@ export class Theory {
         const processedHead = this.#processHead(head);
         if (processedHead === undefined) return;
         const [nameDecl, shape] = processedHead;   
-        const short = this.#abstrNormals.get(nameDecl.normal_short);
-        const long = this.#abstrNormals.get(nameDecl.normal_long);
-        if (short !== undefined || long !== undefined) {
-            const handle = force(short ?? long);
-            const info = this.#abstractions[handle];
-            this.error(head.abstraction.span, "Abstraction is already declared elsewhere as: " + info.head);
-            return this.#addSyntacticCategory(nameDecl);
+        for (const normal of nameDecl.normals) {
+            const handle = this.#abstrNormals.get(normal);
+            if (handle !== undefined) {
+                const info = this.#abstractions[handle];
+                this.error(head.abstraction.span, "Abstraction is already declared elsewhere as: " + info.head);
+                return this.#addSyntacticCategory(nameDecl);
+            }
         }
         const sc = this.ensureSyntacticCategory(head.abstraction.span, head.abstraction.str, true);
         if (sc === undefined) return;
@@ -526,8 +534,9 @@ export class Theory {
         this.#current = undefined;
         const handle = this.#abstractions.length;
         this.#abstractions.push(info);
-        this.#abstrNormals.set(info.nameDecl.normal_short, handle);
-        this.#abstrNormals.set(info.nameDecl.normal_long, handle);
+        for (const normal of info.nameDecl.normals) {
+            this.#abstrNormals.set(normal, handle);
+        }
     }
 
     #checkSyntaxSpec(info : AbstractionInfo, spec : SyntaxSpec) : boolean {

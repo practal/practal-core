@@ -56,7 +56,17 @@ export function isVarId(id : string) : boolean {
 export function normalConstId(id : string) : string {
     let normal = "";
     for (const c of id) {
-        if (isConstIdLetter(c) || isDigit(c)) normal += c.toLowerCase();
+        if (isConstIdLetter(c)) normal += c.toLowerCase();
+        else normal += c;
+    }
+    return normal;
+}
+
+export function normalConstIdRemoveHyphens(id : string) : string {
+    let normal = "";
+    for (const c of id) {
+        if (isConstIdLetter(c)) normal += c.toLowerCase();
+        else if (isDigit(c)) normal += c;
     }
     return normal;
 }
