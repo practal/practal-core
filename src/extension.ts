@@ -115,10 +115,6 @@ function tokenizer(lines : TextLines) : [Iterable<Token<TokenType>>, Iterable<Di
                 diagnoses.push(diagnosis);
             }
             continue;
-        } else if (token.type === TokenType.unknown_id) {
-            const msg = "Unknown abstraction.";
-            const diagnosis = new Diagnosis(spanOfResult(token), Severity.ERROR, msg);
-            diagnoses.push(diagnosis);        
         }
         if (token.type !== TokenType.whitespace) first_invalid = true;
     }
