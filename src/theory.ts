@@ -540,6 +540,10 @@ export class Theory {
     }
 
     #checkSyntaxSpec(info : AbstractionInfo, spec : SyntaxSpec) : boolean {
+        if (spec.fragments.length === 0) {
+            this.error(spec.syntactic_category.span, "Empty syntax specification.");
+            return false;
+        }
         const head = info.head;
         const bounds = new Set<string>();
         const frees = new Set<string>();
