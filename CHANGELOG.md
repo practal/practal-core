@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.6] - 2023-02-03
+
+### Changed
+
+- Hyphens in identifiers can be left out independently of each other.
+- Special treatment of syntactic categories belonging to value abstractions.
+- Disallow empty syntax specifications.
+
 ## [0.0.5] - 2023-02-02
 
 ### Added

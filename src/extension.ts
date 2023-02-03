@@ -128,7 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
     const output = vscode.window.createOutputChannel("Practal");
     configureDebugging((s : string) => output.appendLine(s));
     registerLanguageTokenizer("practal", tokenizer, ALL_TOKEN_TYPES, semantics);
-    debug("Practal Core v0.0.5");
+    debug("Practal Core v0.0.6");
     debug("©︎ 2023 Steven Obua (trading as Recursive Mind)");
     debug("Check https://practal.com for information and updates."); 
     debug("--------------------------------------------------------------------");
