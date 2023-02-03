@@ -1,5 +1,6 @@
-import { charL, firstL, Lexer, literalL, rep1L, repL, seqL } from "./pyramids/lexer";
+import { charL, firstL, hyphenL, Lexer, literalL, optL, rep1L, repL, seqL } from "./pyramids/lexer";
 import { Span } from "./pyramids/span";
+import { internalError } from "./things/utils";
 
 export function splitIdDecl(decl : string) : { short : string, long : string } | undefined {
     let short = "";
@@ -57,16 +58,26 @@ export function normalConstId(id : string) : string {
     let normal = "";
     for (const c of id) {
         if (isConstIdLetter(c)) normal += c.toLowerCase();
-        else normal += c;
+        else if (isDigit(c)) normal += c;
     }
     return normal;
 }
 
-export function normalConstIdRemoveHyphens(id : string) : string {
-    let normal = "";
+const optHyphenL = optL(hyphenL);
+
+export function idMatcher(id : string) : Lexer {
+    const lexers : Lexer[] = [];
     for (const c of id) {
-        if (isConstIdLetter(c)) normal += c.toLowerCase();
-        else if (isDigit(c)) normal += c;
+        if (isConstIdLetter(c)) {
+            const lower = c.toLowerCase();
+            lexers.push(charL(d => d.toLowerCase() === lower));
+        } else if (isDigit(c)) {
+            lexers.push(literalL(c));
+        } else if (c === "-") {
+            lexers.push(optHyphenL);
+        } else {
+            internalError("Unexpected identifier character: '" + c + "'.");
+        }
     }
-    return normal;
+    return seqL(...lexers);
 }

@@ -1,4 +1,4 @@
-import { isConstId, normalConstId, normalConstIdRemoveHyphens, splitIdDecl } from "./identifier";
+import { idMatcher, isConstId, normalConstId, splitIdDecl } from "./identifier";
 import { Shape } from "./logic/shape";
 import { OnlineDAG } from "./things/online_dag";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
@@ -7,6 +7,7 @@ import { nat } from "./things/primitives";
 import { assertNever, force, freeze, notImplemented, privateConstructor } from "./things/utils";
 import { UITerm } from "./uiterm";
 import { debug } from "./things/debug";
+import { firstL, Lexer } from "./pyramids/lexer";
 
 export type Handle = nat
 
@@ -54,14 +55,16 @@ export class NameDecl {
     short : string
     long : string
     normals : Set<string>
+    matcher : Lexer
     
-    private constructor(span : Span, decl : string, short : string, long : string, normals : string[]) {
+    private constructor(span : Span, decl : string, short : string, long : string) {
         if (!NameDecl.#internal) privateConstructor("NameDecl");
         this.span = span;
         this.decl = decl;
         this.short = short;
         this.long = long;
-        this.normals = new Set(normals);
+        this.normals = new Set([normalConstId(short), normalConstId(long)]);
+        this.matcher = firstL(idMatcher(long), idMatcher(short));
         freeze(this);
     }
 
@@ -70,8 +73,7 @@ export class NameDecl {
     }
 
     matches(name : string) : boolean {
-        const n = normalConstId(name);
-        return this.normals.has(normalConstId(name));
+        return this.matcher(name, 0) === name.length;
     }
 
     static mk(span : Span, decl : string) : NameDecl | undefined {
@@ -79,12 +81,8 @@ export class NameDecl {
         if (split === undefined) return undefined;
         if (!isConstId(split.short)) return undefined;
         if (!isConstId(split.long)) return undefined;
-        const normal_short1 = normalConstId(split.short);
-        const normal_short2 = normalConstIdRemoveHyphens(split.short);
-        const normal_long1 = normalConstId(split.long);
-        const normal_long2 = normalConstIdRemoveHyphens(split.long);
         NameDecl.#internal = true;
-        const nameDecl = new NameDecl(span, decl, split.short, split.long, [normal_short1, normal_short2, normal_long1, normal_long2]);
+        const nameDecl = new NameDecl(span, decl, split.short, split.long);
         NameDecl.#internal = false;
         return nameDecl;
     }
@@ -380,13 +378,17 @@ export class Theory {
     }
 
     lookupSyntacticCategory(name : string) : Handle | undefined {
-        name = normalConstId(name);
-        return this.#scNormals.get(name);
+        const handle = this.#scNormals.get(normalConstId(name));
+        if (handle === undefined) return undefined;
+        if (this.#syntacticCategories[handle].decl.matches(name)) return handle;
+        else return undefined;
     }
 
     lookupAbstraction(name : string) : Handle | undefined {
-        name = normalConstId(name);
-        return this.#abstrNormals.get(name);    
+        const handle = this.#abstrNormals.get(normalConstId(name)); 
+        if (handle === undefined) return undefined;
+        if (this.#abstractions[handle].nameDecl.matches(name)) return handle; 
+        else return undefined;   
     }
 
     #addSyntacticCategory(decl : NameDecl) : Handle {
@@ -423,7 +425,7 @@ export class Theory {
             this.error(span, "Syntactic category is already declared as '" + this.#syntacticCategories[handle].decl.decl + "'.");
             return undefined;
         } else {
-            return handle;
+            if (this.#syntacticCategories[handle].decl.matches(decl)) return handle; else return undefined;
         }
     }
 
@@ -644,3 +646,5 @@ export class Theory {
 
 }
 freeze(Theory);
+
+
