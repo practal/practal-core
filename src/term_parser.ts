@@ -247,11 +247,13 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     }
 
     const abstractions = theory.abstractions;
+    const atomic_scs : Set<Handle> = new Set();
     for (const [abstr_handle, abstraction] of abstractions.entries()) {
         const specs = abstraction.syntax_specs;
         for (let i = 0; i < specs.length; i++) {
             const spec = specs[i];
             const sc = spec.syntactic_category.str === "" ? abstraction.syntacticCategory : theory.lookupSyntacticCategory(spec.syntactic_category.str);
+            if (sc === abstraction.syntacticCategory && abstraction.shape.arity === 0) atomic_scs.add(sc);
             if (sc === undefined) {
                 error(spec.syntactic_category.span, "Unknown syntactic category '" + spec.syntactic_category.str + "'.");
                 continue;
@@ -315,12 +317,18 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     for (const sc of syntactic_categories) {
         const lhs = sc_greater(sc);
         const atomics : string[] = ["Atomic"];
+        let has_greater = false;
         for (const succ of successors.get(sc) ?? []) {
             atomics.push(sc_atomic(succ));
+            has_greater = true;
         }
-        addRule(lhs, or(...atomics));
-        addRule(sc_this(sc), or(sc_atomic(sc), sc_greater(sc)));
-        addRule("Term", sc_atomic(sc));
+        if (!has_greater && atomic_scs.has(sc)) {
+            addRule("Atomic", sc_atomic(sc));
+        } else {
+            addRule(lhs, or(...atomics));
+            addRule(sc_this(sc), or(sc_atomic(sc), sc_greater(sc)));
+            addRule("Term", sc_atomic(sc));
+        }
     }
 
     return { rules : rules, texts : texts, syntactic_categories : syntactic_categories, labels : labels };
