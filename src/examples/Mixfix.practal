@@ -10,7 +10,7 @@ theory Mixfix
 
 axiom x == x ∧ x + y == y + x ∧ x + y + z == x + (y + z)
 
-axiom x + y ∧ y + x
+% axiom x + y ∧ y + x
 
 % If you really want this axiom, you need to use brackets:
 axiom (x + y) ∧ (y + x)
