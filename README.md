@@ -13,12 +13,9 @@ You can describe an Abstraction Logic theory in a `.practal` file by:
 * Introducing axioms.
 * Providing custom syntax for your abstractions. Practal Core contains under the hood a full engine for deterministic LR parsing. It is actually quite a lot of fun to play around with your own syntax!
 
-The extension provides syntax highlighting for `.practal` files. 
-Soon, you will be able to actually *do* something with your theory apart from admiring it, like computing and proving theorems, but for now, that's it. 
+See [Practal.com](https://practal.com) and in particular [A First Look at Practal](https://practal.com/press/aflap.1) for more information!
 
-Please check [Practal.com](https://practal.com) for more information and updates!
-
-<img src="Foundation.gif" alt="Foundation.practal" width="482" style="border-radius:20px"/>
+<img src="Foundation.gif" alt="Foundation.practal" width="436" style="border-radius:20px"/>
 
 ## Known Issues
 

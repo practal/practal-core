@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.7] - 2023-02-04
+
+### Added
+
+- Newly declared names are underlined.
+- Added examples of .practal files.
+
 ## [0.0.6] - 2023-02-03
 
 ### Changed
