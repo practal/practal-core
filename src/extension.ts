@@ -19,10 +19,12 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.operation_id:
         case TokenType.operator_id:    
         case TokenType.abstraction : return ["practal-abstraction", []];
+        case TokenType.abstraction_declaration : return ["practal-abstraction-declaration", []];
         case TokenType.identifier : return ["practal-identifier", []];
         case TokenType.custom_syntax : return ["practal-custom-syntax", []];
         case TokenType.syntactic_category : return ["practal-syntactic-category", []];
         case TokenType.syntactic_category_keyword : return ["practal-syntactic-category-keyword", []];        
+        case TokenType.syntactic_category_declaration : return ["practal-syntactic-category-declaration", []];
         //case TokenType.identifierDecl : return ["practal-identifier", ["declaration"]];
         case TokenType.invalid : return ["practal-invalid", []];
         case TokenType.whitespace : return undefined;

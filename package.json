@@ -35,8 +35,10 @@
         "scopes": {
           "practal-module-name": ["entity.name"],
           "practal-abstraction": ["entity.name.function"],
+          "practal-abstraction-declaration": ["entity.name.function"],
           "practal-identifier": ["entity.name"],
           "practal-syntactic-category": ["constant.language"], 
+          "practal-syntactic-category-declaration": ["constant.language"], 
           "practal-syntactic-category-keyword": ["entity.name.type"], 
           "practal-syntactic-comparator": ["keyword.operator"], 
           "practal-invalid": ["invalid.illegal"],
@@ -71,7 +73,9 @@
             "practal-syntactic-category": { "italic": true },
             "practal-syntactic-category-keyword": { "italic": true },   
             "practal-syntax-mandatory-space": { "underline": true },
-            "practal-latex-control-sequence" : { "italic": true }           
+            "practal-latex-control-sequence" : { "italic": true },
+            "practal-abstraction-declaration": { "underline": true },       
+            "practal-syntactic-category-declaration": { "underline": true, "italic": true }
           }
       },      
       "[practal]": {

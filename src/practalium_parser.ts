@@ -17,11 +17,13 @@ export enum TokenType {
     label_colon,
     identifier,
     syntactic_category,
+    syntactic_category_declaration,
     syntactic_category_keyword,
     free_variable,
     bound_variable,
     variable,
     abstraction,
+    abstraction_declaration,
     unknown_id,
     value_id,
     operation_id,
@@ -196,7 +198,7 @@ const invalidDP : P = debugDP("unknown", tokenDP(nonspaces1L, TokenType.invalid)
 const invalidCharDP : P = debugDP("unknown", tokenDP(nonspaceL, TokenType.invalid));
 const labelDP : P = seqDP(tokenDP(identifierL, TokenType.label), optSpacesDP, tokenDP(literalL(":"), TokenType.label_colon));
 const abstractionDP : P = tokenDP(seqL(literalL("\\"), identifierL), TokenType.abstraction);
-const abstractionDeclDP : P = tokenDP(seqL(literalL("\\"), idDeclL), TokenType.abstraction);
+const abstractionDeclDP : P = tokenDP(seqL(literalL("\\"), idDeclL), TokenType.abstraction_declaration);
 const freeT : P = tokenDP(seqL(literalL("?"), identifierL), TokenType.free_variable);
 const roundOpenDP : P = tokenDP(literalL("("), TokenType.round_open);
 const roundCloseDP : P = tokenDP(literalL(")"), TokenType.round_close);
@@ -363,6 +365,9 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
         const sc = readSyntacticCategory(lines, token);
         if (sc !== undefined) {
             //const span = spanOfResult(token);
+            if (theory.lookupSyntacticCategory(sc.str) === undefined) {
+                token.type = TokenType.syntactic_category_declaration;
+            }
             const handle2 = theory.ensureSyntacticCategory(sc.span, sc.str, false);
             if (handle1 !== undefined && handle2 !== undefined) {  
                 if (handle1IsHigher === undefined) {  
@@ -447,7 +452,7 @@ function readDeclarationHead(lines : TextLines, result : Result<SectionData, Tok
             i = j + 1;
         }
     }
-    let i = search(0, count, t => t === TokenType.abstraction);
+    let i = search(0, count, t => t === TokenType.abstraction_declaration);
     const abstraction = readName(i);
     if (abstraction === undefined) return undefined;
     i += 1;
