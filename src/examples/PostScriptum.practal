@@ -1,0 +1,18 @@
+theory PostScriptum
+
+\plus x y ' #x' + #y
+
+\eq x y ' #x'plus == #y'plus
+
+\and A B ' #A ∧ #B'
+
+'eq > 'and
+
+axiom x == x ∧ x + y == y + x ∧ x + y + z == x + (y + z)
+
+axiom x + y ∧ y + x
+
+% If you really want this axiom, you need to use brackets:
+axiom (x + y) ∧ (y + x)
+
+
