@@ -50,6 +50,9 @@ export class NameDecl {
 
     static #internal = false
 
+    static SC_ATOMIC = NameDecl.mkSCAtomic();
+    static SC_TERM = NameDecl.mkSCTerm();
+
     span : Span
     decl : string
     short : string
@@ -74,6 +77,20 @@ export class NameDecl {
 
     matches(name : string) : boolean {
         return this.matcher(name, 0) === name.length;
+    }
+
+    private static mkSCAtomic() : NameDecl {
+        NameDecl.#internal = true;
+        const decl =  new NameDecl(Span.none, "'a(tomic)", "'a", "'atomic");
+        NameDecl.#internal = false;
+        return decl;
+    }
+
+    private static mkSCTerm() : NameDecl {
+        NameDecl.#internal = true;
+        const decl = new NameDecl(Span.none, "'t(erm)", "'t", "'term");
+        NameDecl.#internal = false;
+        return decl;
     }
 
     static mk(span : Span, decl : string) : NameDecl | undefined {
@@ -235,19 +252,12 @@ function checkInternal() {
 export class SyntacticCategoryInfo {
 
     decl : NameDecl
-    #less_than : Set<Handle>;
     #less_than_transitive : Set<Handle>
 
     constructor(decl : NameDecl) {
         this.decl = decl;
-        this.#less_than = new Set();
         this.#less_than_transitive = new Set();
         freeze(this);
-    }
-
-    addLessThan(handle : Handle) {
-        checkInternal();
-        this.#less_than.add(handle);
     }
 
     addLessThanTransitive(handle : Handle) {
@@ -255,7 +265,6 @@ export class SyntacticCategoryInfo {
         this.#less_than_transitive.add(handle);
     }
 
-    get less_than(): Handle[] { return [...this.#less_than]; }
     get less_than_transitive(): Handle[] { return [...this.#less_than_transitive]; }
 
 }
@@ -312,6 +321,8 @@ export class Theory {
     #current : AbstractionInfo | undefined
     #syntacticCategories : SyntacticCategoryInfo[]
     #online_dag : OnlineDAG<Handle>
+    #SC_ATOMIC : Handle
+    #SC_TERM : Handle
 
     private constructor(lines : TextLines) {
         this.#lines = lines;
@@ -323,7 +334,14 @@ export class Theory {
         this.#scNormals = new Map();
         this.#online_dag = new OnlineDAG();
         freeze(this);
+        this.#SC_ATOMIC = this.#addSyntacticCategory(NameDecl.SC_ATOMIC);
+        this.#SC_TERM = this.#addSyntacticCategory(NameDecl.SC_TERM);
+        this.addSyntacticCategoryPriority(Span.none, this.#SC_ATOMIC, this.#SC_TERM);
     } 
+
+    get SC_ATOMIC() : Handle { return this.#SC_ATOMIC; }
+
+    get SC_TERM() : Handle { return this.#SC_TERM; }
         
     report(span : Span | undefined, severity : Severity, msg : string) {
         if (!span) span = new Span(0, 0, 0, 0);
@@ -359,7 +377,7 @@ export class Theory {
 
     #canDeclareTheoryName() : boolean {
         if (this.#name !== undefined) return false;
-        if (this.#syntacticCategories.length > 0) return false;
+        if (this.#syntacticCategories.length > 2) return false;
         if (this.#abstractions.length > 0) return false;
         return true;
     }
@@ -419,7 +437,12 @@ export class Theory {
             }
         }
         if (defined === 0) {
-            return this.#addSyntacticCategory(nameDecl);
+            const sc = this.#addSyntacticCategory(nameDecl);
+            if (!isNecessarilyDeclaration) {
+                this.addSyntacticCategoryPriority(span, sc, this.SC_TERM);
+                this.addSyntacticCategoryPriority(span, this.SC_ATOMIC, sc);
+            }
+            return sc;
         }
         if (isNecessarilyDeclaration || nameDecl.isDeclaration) {
             this.error(span, "Syntactic category is already declared as '" + this.#syntacticCategories[handle].decl.decl + "'.");
@@ -429,7 +452,7 @@ export class Theory {
         }
     }
 
-    addSyntacticCategoryPriority(span : Span, higher : Handle, lower : Handle, transitive : boolean) {
+    addSyntacticCategoryPriority(span : Span, higher : Handle, lower : Handle) {
         if (this.#online_dag.hasEdge(higher, lower)) return;
         if (!this.#online_dag.addEdge(higher, lower)) {
             this.error(span, "This priority relation between syntactic categories introduces a cycle.");
@@ -437,16 +460,8 @@ export class Theory {
         }
         const lsc = this.#syntacticCategories[lower];
         internal = true;
-        if (transitive) {
-            lsc.addLessThanTransitive(higher);
-        } else {
-            lsc.addLessThan(higher);
-        }
+        lsc.addLessThanTransitive(higher);
         internal = false;
-    }
-
-    addSyntacticCategoryEquality(span : Span, first : Handle, second : Handle) {
-        this.error(span, "Equality between syntactic categories is not supported (yet?).");
     }
 
     #processHead(head : Head) : [NameDecl, Shape] | undefined {
@@ -526,6 +541,12 @@ export class Theory {
         }
         const sc = this.ensureSyntacticCategory(head.abstraction.span, head.abstraction.str, true);
         if (sc === undefined) return;
+        if (shape.arity === 0) {
+            this.addSyntacticCategoryPriority(nameDecl.span, sc, this.SC_ATOMIC);
+        } else {
+            this.addSyntacticCategoryPriority(nameDecl.span, sc, this.SC_TERM);
+            this.addSyntacticCategoryPriority(nameDecl.span, this.SC_ATOMIC, sc);
+        }
         const info = new AbstractionInfo(head, nameDecl, shape, sc);
         this.#current = info;
     }

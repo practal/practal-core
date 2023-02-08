@@ -37,9 +37,6 @@ export enum TokenType {
     round_close,
     dot,
     comma,
-    syntactic_less,
-    syntactic_eq,
-    syntactic_greater,
     syntactic_transitive_less,
     syntactic_transitive_greater,
     syntax_fragment,
@@ -358,8 +355,7 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
     if (result === undefined) return undefined;
     const theory = result.state.theory;
     let handle1 : Handle | undefined = undefined;
-    let handle1IsHigher : boolean | undefined = undefined;
-    let transitive : boolean = false;
+    let handle1IsHigher : boolean = true;
     let opSpan : Span | undefined = undefined;
     for (const token of iterateTokensFlat(result.result)) {
         const sc = readSyntacticCategory(lines, token);
@@ -370,41 +366,23 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
             }
             const handle2 = theory.ensureSyntacticCategory(sc.span, sc.str, false);
             if (handle1 !== undefined && handle2 !== undefined) {  
-                if (handle1IsHigher === undefined) {  
-                    theory.addSyntacticCategoryEquality(opSpan!, handle1, handle2);
-                } else if (handle1IsHigher) {
-                    theory.addSyntacticCategoryPriority(opSpan!, handle1, handle2, transitive);
+                if (handle1IsHigher) {
+                    theory.addSyntacticCategoryPriority(opSpan!, handle1, handle2);
                 } else {
-                    theory.addSyntacticCategoryPriority(opSpan!, handle2, handle1, transitive);
+                    theory.addSyntacticCategoryPriority(opSpan!, handle2, handle1);
                 }
             }
             handle1 = handle2;
         } else {
             switch (token.type) {
                 case TokenType.whitespace: break;
-                case TokenType.syntactic_eq:
-                    opSpan = spanOfResult(token);
-                    handle1IsHigher = undefined;
-                    break;
-                case TokenType.syntactic_greater:
-                    opSpan = spanOfResult(token);
-                    handle1IsHigher = true;
-                    transitive = false;
-                    break;
                 case TokenType.syntactic_transitive_greater:
                     opSpan = spanOfResult(token);
                     handle1IsHigher = true;
-                    transitive = true;
-                    break;
-                case TokenType.syntactic_less:
-                    opSpan = spanOfResult(token);
-                    handle1IsHigher = false;
-                    transitive = false;
                     break;
                 case TokenType.syntactic_transitive_less:
                     opSpan = spanOfResult(token);
                     handle1IsHigher = false;
-                    transitive = true;
                     break;
                 default:
                     throw new Error("Unexpected token of type: " + TokenType[token.type]);
@@ -502,15 +480,9 @@ const syntacticCategoryKeywordDP : P = seqDP(tokenDP(seqL(literalL("'"), identif
 const syntacticCategoryDeclDP : P = seqDP(tokenDP(seqL(literalL("'"), idDeclL), TokenType.syntactic_category)); 
 const syntacticCategoryTransitiveGreaterDP : P = tokenDP(literalL(">"), TokenType.syntactic_transitive_greater);
 const syntacticCategoryTransitiveLessDP : P = tokenDP(literalL("<"), TokenType.syntactic_transitive_less);
-const syntacticCategoryGreaterDP : P = tokenDP(firstL(literalL("⪫"), literalL("->")), TokenType.syntactic_greater);
-const syntacticCategoryLessDP : P = tokenDP(firstL(literalL("⪪"), literalL("<-")), TokenType.syntactic_less);
-const syntacticCategoryEqDP : P = tokenDP(literalL("="), TokenType.syntactic_eq);
 const syntacticCategoryComparatorDP : P = orDP(
-    syntacticCategoryGreaterDP,
-    syntacticCategoryLessDP,
     syntacticCategoryTransitiveGreaterDP,
-    syntacticCategoryTransitiveLessDP,
-    syntacticCategoryEqDP);    
+    syntacticCategoryTransitiveLessDP);    
 const syntacticCategoryConstraintDP : P = seqDP(syntacticCategoryDeclDP, repDP(optWhitespaceDP, syntacticCategoryComparatorDP, optWhitespaceDP, syntacticCategoryDeclDP));
 const syntacticCategorySection : S = { bullet : modifyResultDP(syntacticCategoryConstraintDP, addSyntacticConstraint), body : totalOfDP(emptyDP()), type : SectionDataNone(SectionName.syntactic_category) };
 

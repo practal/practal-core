@@ -46,6 +46,7 @@ freeze(rule);
 export function seq(...exprs : Expr[]) : Expr {
     return { kind : ExprKind.SEQ, params : flattenSEQ(exprs) };
 }
+freeze(seq);
 
 export function or(...exprs : Expr[]) : Expr {
     return { kind : ExprKind.OR, params : flattenOR(exprs) };
@@ -107,7 +108,9 @@ export function printExpr(expr : Expr) : string {
         case ExprKind.OPT: return brackets(seq(expr.params)) + "?";
         case ExprKind.STAR: return brackets(seq(expr.params)) + "*";
         case ExprKind.PLUS: return brackets(seq(expr.params)) + "+";
-        case ExprKind.OR: return expr.params.map(printExpr).join(" | ");
+        case ExprKind.OR: 
+            if (expr.params.length === 0) return "∅";
+            else return expr.params.map(printExpr).join(" | ");
         default: assertNever(kind);
     }
 }
@@ -154,6 +157,7 @@ export function convertExprGrammar(
 
     function mkRules(lhs : Sym, expr : Expr) {
         if (typeof expr === "string") {
+            //debug("!!! " + lhs + " => " + printExpr(expr));
             addRule(lhs, expr);
             return;
         }
@@ -178,6 +182,7 @@ export function convertExprGrammar(
 
     function mkOr(lhs : Sym, exprs : Expr[]) {
         for (const e of exprs) {
+            //debug("mkOr for " + lhs + " => " + printExpr(e));
             mkRules(lhs, e);
         }
     }

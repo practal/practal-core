@@ -43,11 +43,8 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.dot : return ["practal-punctuation", []];
         case TokenType.comma : return ["practal-punctuation", []];
         //case TokenType.quick_syntax: return ["practal-syntax", []];
-        case TokenType.syntactic_less: return ["practal-syntactic-comparator", []];
-        case TokenType.syntactic_greater: return ["practal-syntactic-comparator", []];
         case TokenType.syntactic_transitive_less: return ["practal-syntactic-comparator", []];
         case TokenType.syntactic_transitive_greater: return ["practal-syntactic-comparator", []];
-        case TokenType.syntactic_eq: return ["practal-syntactic-comparator", []];
         case TokenType.syntax_fragment: return ["practal-syntax-fragment", []];
         case TokenType.syntax_optional_space: return ["practal-syntax-optional-space", []];
         case TokenType.syntax_mandatory_space: return ["practal-syntax-mandatory-space", []];

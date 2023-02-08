@@ -1,0 +1,4 @@
+% \if-1 x a b ' if #x then #a else #b
+\if-2 x a ' if #x then #a
+
+axiom if x then a

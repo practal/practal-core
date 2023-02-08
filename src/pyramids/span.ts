@@ -5,6 +5,9 @@ import { Result, ResultKind, textOfToken, Token } from "./deterministic_parser";
 import { TextLines } from "./textlines";
 
 export class Span {
+
+    static none = new Span(0, 0, 0, 0);
+
     startLine : nat
     startOffsetInclusive : nat
     endLine : nat

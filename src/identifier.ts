@@ -71,7 +71,7 @@ export function idMatcher(id : string) : Lexer {
         if (isConstIdLetter(c)) {
             const lower = c.toLowerCase();
             lexers.push(charL(d => d.toLowerCase() === lower));
-        } else if (isDigit(c)) {
+        } else if (isDigit(c) || c == "'") {
             lexers.push(literalL(c));
         } else if (c === "-") {
             lexers.push(optHyphenL);

@@ -1,7 +1,7 @@
 import { Shape } from "./logic/shape";
 import { ParseState, SectionData, SectionDataCustom, SectionDataNone, SectionDataTerm, SectionDataTerms, SectionName, TokenType } from "./practalium_parser";
 import { DetParser, eofDP, modifyResultDP, newlineDP, optDP, orDP, rep1DP, seqDP, strictTokenDP, textOfToken, Token, tokenDP } from "./pyramids/deterministic_parser";
-import { cloneExprGrammar, Expr, ExprGrammar, opt, or, rule, seq, star } from "./pyramids/expr_grammar";
+import { cloneExprGrammar, Expr, ExprGrammar, opt, or, printExpr, rule, seq, star } from "./pyramids/expr_grammar";
 import { Sym } from "./pyramids/grammar_symbols";
 import { charL, literalL, optL, rep1L, repL, seqL } from "./pyramids/lexer";
 import { lrDP, mkTerminalParsers, orGreedyTerminalParsers, TerminalParsers } from "./pyramids/lr_parser";
@@ -21,14 +21,32 @@ export const basic_grammar : ExprGrammar = {
     rules : [
         rule("Start", "Term", "final"),
 
-        rule("Term", "Atomic"),
-        rule("Term", "Operation-app"),
-        rule("Term", "Operator-app"),
+        //rule("Term", "Atomic"),
+        //rule("Term", "Operation-app"),
+        //rule("Term", "Operator-app"),
+        //rule("Term", "Term-base"),
+        //rule("Term", "Term-greater"),
 
-        rule("Atomic", "Var-app"),
-        rule("Atomic", "Var"),
-        rule("Atomic", "Value"),
-        rule("Atomic", "Brackets"),
+        rule("Term-base", "Operation-app"),
+        rule("Term-base", "Operator-app"),
+
+        /** 
+         * The following is automatically generated from Term < Atomic:
+         *    
+         *     rule("Term", "Term-base"),
+         *     rule("Term", "Term-greater"),
+         *     rule("Atomic", "Atomic-base"),
+         *     rule("Atomic", "Atomic-greater"),
+         *     rule("Term-greater", "Atomic-base")
+         */
+        
+        //rule("Atomic", "Atomic-base"),
+        //rule("Atomic", "Atomic-greater"),
+
+        rule("Atomic-base", "Var-app"),
+        rule("Atomic-base", "Var"),
+        rule("Atomic-base", "Value"),
+        rule("Atomic-base", "Brackets"),
 
         rule("Value", "value-id"),
         rule("Value", "unknown-id"),
@@ -42,8 +60,23 @@ export const basic_grammar : ExprGrammar = {
 
         rule("Operation-app", "operation-id", "Params"),
         rule("Operator-app", "operator-id", star(ows, "bound-var"), ows, "dot", "Params"),
-        rule("Params", ws, "Term"),
-        rule("Params", ws, "Atomic", "Params")
+
+        //rule("Params", ws, "Term-greater-non-atomic"),
+        //rule("Params", ws, "Atomic-base"),
+        //rule("Params", ws, "Atomic-greater"),
+        //rule("Params", ws, "Term-base"),
+        //rule("Params", ws, "Atomic-base", "Params"),
+        //rule("Params", ws, "Atomic-greater", "Params")
+
+        //rule("Params", ws, "Atomic"),
+        //rule("Params", ws, "Atomic", "Params"),
+
+        //rule("Params", ws, "Term-greater-non-atomic"),
+        rule("Params", ws, "Atomic-base"),
+        rule("Params", ws, "Atomic-greater"),
+        rule("Params", ws, "Term-base"),
+        rule("Params", ws, "Atomic-base", "Params"),
+        rule("Params", ws, "Atomic-greater", "Params")
     ],
 
     distinct : [
@@ -187,22 +220,7 @@ export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle
     transitive = transitiveClosure(transitive);
     let result : Map<Handle, Set<Handle>> = new Map();
     for (let sc = 0; sc < sc_infos.length; sc++) {
-        const info = sc_infos[sc];  
-        const successors : Set<Handle> = new Set();
-        const less_than : Set<Handle> = new Set();
-        for (const succ of transitive.outgoing(sc)) {
-            successors.add(succ);
-            for (const succ_succ of sc_infos[succ].less_than) {
-                less_than.add(succ_succ);
-            }
-        }
-        for (const succ of info.less_than) less_than.add(succ);
-        for (const succ of less_than) {
-            successors.add(succ);
-            for (const succ_succ of transitive.outgoing(succ)) {
-                successors.add(succ_succ);
-            }
-        } 
+        const successors = new Set(transitive.outgoing(sc));
         result.set(sc, successors);
     }
     return result;
@@ -211,26 +229,36 @@ export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle
 export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, rhs : Expr}[], texts : Map<string, nat>, syntactic_categories : Set<Handle>, labels : Map<string, SectionData> } {
     const rules : { lhs : Sym, rhs : Expr, bounds? : Map<string, nat>, frees? : Map<string, nat>}[] = [];
     const texts : Map<string, nat> = new Map();
-    const syntactic_categories : Set<nat> = new Set();
+    const syntactic_categories : Set<nat> = new Set([theory.SC_ATOMIC, theory.SC_TERM]);
     const labels : Map<string, SectionData> = new Map();
 
     function error(span : Span, msg : string) {
         theory.error(span, msg);
     }
 
-    function sc_greater(sc : Handle) : string {
-        syntactic_categories.add(sc);
-        return "S`" + sc + "-greater";
+    let sc_done = false;
+
+    function sc_name(sc : Handle) : string {
+        if (sc === theory.SC_ATOMIC) return "Atomic";
+        else if (sc === theory.SC_TERM) return "Term";
+        else return "S`" + sc;
     }
 
-    function sc_atomic(sc : Handle) : string {
-        syntactic_categories.add(sc);
-        return "S`" + sc + "-atomic";
+    function sc_greater(sc : Handle) : string {
+        if (!sc_done) syntactic_categories.add(sc);
+        return sc_name(sc) + "-greater";
+    }
+
+    function sc_base(sc : Handle) : string {
+        if (!sc_done) syntactic_categories.add(sc);
+        return sc_name(sc) + "-base";
     }
 
     function sc_this(sc : Handle) : string {
-        syntactic_categories.add(sc);
-        return "S`" + sc + "-this";
+        if (!sc_done) syntactic_categories.add(sc);
+        return sc_name(sc);
+        //if (sc === theory.SC_ATOMIC || sc === theory.SC_TERM) return sc_name(sc);
+        //else return sc_name(sc) + "-this";
     }
 
     function text(t : string) : string {
@@ -247,13 +275,13 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     }
 
     const abstractions = theory.abstractions;
-    const atomic_scs : Set<Handle> = new Set();
+    const bases : Set<Handle> = new Set([theory.SC_ATOMIC, theory.SC_TERM]);
     for (const [abstr_handle, abstraction] of abstractions.entries()) {
         const specs = abstraction.syntax_specs;
         for (let i = 0; i < specs.length; i++) {
             const spec = specs[i];
             const sc = spec.syntactic_category.str === "" ? abstraction.syntacticCategory : theory.lookupSyntacticCategory(spec.syntactic_category.str);
-            if (sc === abstraction.syntacticCategory && abstraction.shape.arity === 0) atomic_scs.add(sc);
+            //if (sc === abstraction.syntacticCategory && abstraction.shape.arity === 0) atomic_scs.add(sc);
             if (sc === undefined) {
                 error(spec.syntactic_category.span, "Unknown syntactic category '" + spec.syntactic_category.str + "'.");
                 continue;
@@ -308,28 +336,51 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
             const A = "A`" + abstr_handle + "-" + i;
             labels.set(A, SectionDataCustom(abstr_handle, abstraction.head, used_vars, used_bounds));
             addRule(A, ...rhs);
-            addRule(sc_atomic(sc), A);
+            addRule(sc_base(sc), A);
+            bases.add(sc);
         }
         
     }
+    
+    sc_done = true;
 
     const successors = computeSyntacticCategorySuccessors(theory);
     for (const sc of syntactic_categories) {
+        //if (sc === theory.SC_TERM) continue;
         const lhs = sc_greater(sc);
-        const atomics : string[] = ["Atomic"];
-        let has_greater = false;
+        const greater_bases : string[] = [];
         for (const succ of successors.get(sc) ?? []) {
-            atomics.push(sc_atomic(succ));
-            has_greater = true;
+            greater_bases.push(sc_base(succ));
         }
-        if (!has_greater && atomic_scs.has(sc)) {
-            addRule("Atomic", sc_atomic(sc));
+        if (greater_bases.length > 0) {
+            addRule(lhs, or(...greater_bases));
+            addRule(sc_this(sc), or(sc_base(sc), sc_greater(sc)));
         } else {
-            addRule(lhs, or(...atomics));
-            addRule(sc_this(sc), or(sc_atomic(sc), sc_greater(sc)));
-            addRule("Term", sc_atomic(sc));
+            addRule(sc_this(sc), sc_base(sc));
         }
     }
+
+    /*{ // theory.SC_TERM
+        const sc = theory.SC_TERM;
+        const atomic = successors.get(theory.SC_ATOMIC) ?? new Set();
+        atomic.add(theory.SC_ATOMIC);
+        const lhs = sc_greater(sc);
+        const greater_bases : string[] = [];
+        const greater_bases_non_atomic : string[] = [];
+        for (const succ of successors.get(sc) ?? []) {
+            greater_bases.push(sc_base(succ));
+            if (!atomic.has(succ)) greater_bases_non_atomic.push(sc_base(succ));
+        }
+        if (greater_bases.length > 0) {
+            addRule(lhs, or(...greater_bases));
+            addRule(sc_this(sc), or(sc_base(sc), sc_greater(sc)));
+        } else {
+            addRule(sc_this(sc), sc_base(sc));
+        }
+        if (greater_bases_non_atomic.length > 0) {
+            addRule("Term-greater-non-atomic", or(...greater_bases_non_atomic));
+        } 
+    }*/
 
     return { rules : rules, texts : texts, syntactic_categories : syntactic_categories, labels : labels };
 }
@@ -338,6 +389,11 @@ export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar
     let customSyntax = generateCustomSyntax(theory);
     let customGrammar = cloneExprGrammar(basic_grammar);
     customGrammar.rules.push(...customSyntax.rules);
+    debug("-------------");
+    for (const rule of customGrammar.rules) {
+        debug(rule.lhs + " => " + printExpr(rule.rhs));
+    }
+    debug("-------------");
     const texts = [...customSyntax.texts].sort((a, b) => b[0].length - a[0].length);
     force(customGrammar.distinct)[0].push(...texts.map(t => "§" + t[1]));
     /*for (let i = 0; i < texts.length; i++) {
