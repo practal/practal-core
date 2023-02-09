@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.8] - 2023-02-09
+
+This release addresses various issues about syntactic categories.
+
+- The priority relation between syntactic categories is now always a partial order, in particular ⪪ has been removed.
+- ''atomic and ''term are special syntactic categories now that can be accessed explicitly in constraints (but not in syntax specs).
+- Syntactic categories can be declared as "loose", which means they are not bounded by ''atomic and ''term a-priori. For non-loose
+  syntactic categories S the constraint ''term < S < ''atomic is automatically imposed.
+- Abstractions now declare their own syntactic category only if they have a syntax spec that starts with an empty syntactic category specifier.
+  If they define their own syntactic category S, then for an abstraction without parameters the constraint ''atomic < S is imposed,
+  for abstractions with parameters the constraint ''term < S < ''atomic is added.
+
+
 ## [0.0.7] - 2023-02-04
 
 ### Added
