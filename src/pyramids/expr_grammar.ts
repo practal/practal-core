@@ -236,8 +236,8 @@ export function convertExprGrammar(
     for (const f of exprGrammar.final ?? []) {
         symbols.declare_final(f);
     }
-    //const processed_rules = removeUnproductiveNonterminals(rules);
-    const processed_rules = rules;
+    const processed_rules = removeUnproductiveNonterminals(rules);
+    //const processed_rules = rules;
     return { symbols : symbols, grammar : new Grammar(start, processed_rules) };
 }
 freeze(convertExprGrammar);
