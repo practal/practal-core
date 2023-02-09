@@ -19,6 +19,9 @@ export enum TokenType {
     syntactic_category,
     syntactic_category_declaration,
     syntactic_category_keyword,
+    syntactic_category_atomic,
+    syntactic_category_term,
+    loose,
     free_variable,
     bound_variable,
     variable,
@@ -316,13 +319,30 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
     let handle1 : Handle | undefined = undefined;
     let handle1IsHigher : boolean = true;
     let opSpan : Span | undefined = undefined;
+    let loose = false;
     for (const token of iterateTokensFlat(result.result)) {
+        if (token.type === TokenType.syntactic_category_atomic || token.type === TokenType.syntactic_category_term) {
+            const handle2 = token.type === TokenType.syntactic_category_atomic ? theory.SC_ATOMIC : theory.SC_TERM;
+            if (handle1 !== undefined) {  
+                if (handle1IsHigher) {
+                    theory.addSyntacticCategoryPriority(opSpan!, handle1, handle2);
+                } else {
+                    theory.addSyntacticCategoryPriority(opSpan!, handle2, handle1);
+                }
+            }
+            handle1 = handle2;
+            continue;
+        } 
+        if (token.type === TokenType.loose) {
+            loose = true;
+            continue;
+        }
         const sc = readSyntacticCategory(lines, token);
         if (sc !== undefined) {
             if (theory.lookupSyntacticCategory(sc.str) === undefined) {
                 token.type = TokenType.syntactic_category_declaration;
             }
-            const handle2 = theory.ensureSyntacticCategory(sc.span, sc.str, false);
+            const handle2 = theory.ensureSyntacticCategory(sc.span, sc.str, false, loose);
             if (handle1 !== undefined && handle2 !== undefined) {  
                 if (handle1IsHigher) {
                     theory.addSyntacticCategoryPriority(opSpan!, handle1, handle2);
@@ -337,10 +357,12 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
                 case TokenType.syntactic_transitive_greater:
                     opSpan = spanOfResult(token);
                     handle1IsHigher = true;
+                    loose = false;
                     break;
                 case TokenType.syntactic_transitive_less:
                     opSpan = spanOfResult(token);
                     handle1IsHigher = false;
+                    loose = false;
                     break;
                 default:
                     throw new Error("Unexpected token of type: " + TokenType[token.type]);
@@ -356,7 +378,7 @@ function isntNameChar(c : string) : boolean {
 
 function readTokenAsName<T>(lines : TextLines, token : Token<T>) : SpanStr {
     let text = textOfToken(lines, token);
-    while (text.length > 0 && isntNameChar(text.charAt(0))) text = text.slice(1);
+    if (text.length > 0 && isntNameChar(text.charAt(0))) text = text.slice(1);
     if (text.endsWith("'")) text = text.slice(0, text.length - 1);
     return new SpanStr(spanOfResult(token), text);
 }
@@ -427,9 +449,12 @@ function addDeclarationHead(lines : TextLines, result : R) : R {
     return result;
 }
 
-const syntacticCategoryDP : P = seqDP(tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category)); 
-const syntacticCategoryKeywordDP : P = seqDP(tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category_keyword)); 
-const syntacticCategoryDeclDP : P = seqDP(tokenDP(seqL(literalL("'"), idDeclL), TokenType.syntactic_category)); 
+const syntacticCategoryAtomicDP : P = tokenDP(seqL(literalL("''atomic"), optL(literalL("'"))), TokenType.syntactic_category_atomic); 
+const syntacticCategoryTermDP : P = tokenDP(seqL(literalL("''term"), optL(literalL("'"))), TokenType.syntactic_category_term); 
+const looseDP : P = tokenDP(literalL("loose"), TokenType.loose);
+const syntacticCategoryDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category); 
+const syntacticCategoryKeywordDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category_keyword); 
+const syntacticCategoryDeclDP : P = seqDP(optDP(looseDP, optSpacesDP), orDP(syntacticCategoryAtomicDP, syntacticCategoryTermDP, tokenDP(seqL(literalL("'"), idDeclL), TokenType.syntactic_category))); 
 const syntacticCategoryTransitiveGreaterDP : P = tokenDP(literalL(">"), TokenType.syntactic_transitive_greater);
 const syntacticCategoryTransitiveLessDP : P = tokenDP(literalL("<"), TokenType.syntactic_transitive_less);
 const syntacticCategoryComparatorDP : P = orDP(
@@ -474,6 +499,15 @@ function varParserOf(lines : TextLines, state : ParseState) : P {
     return force(state.varParser);
 }
 
+function isSyntacticCategory(t : TokenType) : boolean {
+    return t === TokenType.syntactic_category || t === TokenType.syntactic_category_atomic || t === TokenType.syntactic_category_term;
+}
+
+function usesBuiltInCategory(lines : TextLines, results : Result<SectionData, TokenType>[]) : boolean {
+    const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>));
+    return category.str === "";
+}
+
 function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenType>[]) : SyntaxSpec | undefined {
     const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>));
     let fragments : SyntaxFragment[] = [];
@@ -497,7 +531,7 @@ function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenTy
             case TokenType.free_variable: {
                 const s = force(readTokenAsName(lines, results[i] as Token<TokenType>));
                 i += 1;
-                if (i < results.length && results[i].kind === ResultKind.TOKEN && results[i].type === TokenType.syntactic_category) {
+                if (i < results.length && results[i].kind === ResultKind.TOKEN && isSyntacticCategory(results[i].type as TokenType)) {
                     const sc = force(readTokenAsName(lines, results[i] as Token<TokenType>));
                     fragments.push({ kind: SyntaxFragmentKind.free_variable, name: s, syntactic_category: sc });
                     i += 1;
@@ -532,6 +566,16 @@ function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenTy
 function processDeclaration(lines : TextLines, result : R) : R {
     if (result === undefined) return undefined;   
     if (!result.state.theory.hasCurrent) return result;
+    let usesBuiltIn = false;
+    for (const section of iterateContentSections(result.result)) {
+        if (section.kind === ResultKind.TREE && section.type?.type === SectionName.syntax) {
+            if (usesBuiltInCategory(lines, [...iterateResultsDeep(s => s && s.type === SectionName.newline, section)]))
+                usesBuiltIn = true;
+        } 
+    }
+    if (usesBuiltIn) { 
+        result.state.theory.ensureSyntacticCategoryOfDeclaration();
+    }
     for (const section of iterateContentSections(result.result)) {
         if (section.kind === ResultKind.TREE && section.type?.type === SectionName.syntax) {
             const spec = readSyntaxSpec(lines, [...iterateResultsDeep(s => s && s.type === SectionName.newline, section)]);
