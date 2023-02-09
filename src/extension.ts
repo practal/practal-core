@@ -23,6 +23,9 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.identifier : return ["practal-identifier", []];
         case TokenType.custom_syntax : return ["practal-custom-syntax", []];
         case TokenType.syntactic_category : return ["practal-syntactic-category", []];
+        case TokenType.syntactic_category_term : return ["practal-syntactic-category-keyword", []];
+        case TokenType.syntactic_category_atomic : return ["practal-syntactic-category-keyword", []];
+        case TokenType.loose: return ["practal-secondary-keyword", []];
         case TokenType.syntactic_category_keyword : return ["practal-syntactic-category-keyword", []];        
         case TokenType.syntactic_category_declaration : return ["practal-syntactic-category-declaration", []];
         //case TokenType.identifierDecl : return ["practal-identifier", ["declaration"]];

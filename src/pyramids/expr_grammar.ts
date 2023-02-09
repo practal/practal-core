@@ -1,7 +1,7 @@
 import { debug } from "../things/debug";
 import { int } from "../things/primitives";
 import { assertNever, freeze, groupBy, Printer } from "../things/utils";
-import { Grammar, Rule} from "./cfg";
+import { Grammar, removeUnproductiveNonterminals, Rule} from "./cfg";
 import { GrammarSymbols, isTerminal, Sym } from "./grammar_symbols";
 
 export const enum ExprKind {
@@ -236,8 +236,9 @@ export function convertExprGrammar(
     for (const f of exprGrammar.final ?? []) {
         symbols.declare_final(f);
     }
-
-    return { symbols : symbols, grammar : new Grammar(start, rules) };
+    const processed_rules = removeUnproductiveNonterminals(rules);
+    //const processed_rules = rules;
+    return { symbols : symbols, grammar : new Grammar(start, processed_rules) };
 }
 freeze(convertExprGrammar);
 

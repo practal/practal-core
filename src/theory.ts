@@ -275,18 +275,27 @@ export class AbstractionInfo {
     head : Head
     nameDecl : NameDecl
     shape : Shape
-    syntacticCategory : Handle
+    #syntacticCategory : Handle | undefined
     #syntax_specs : SyntaxSpec[]
     #definition : UITerm | undefined;
 
-    constructor(head : Head, nameDecl : NameDecl, shape : Shape, syntacticCategory : Handle) {
+    constructor(head : Head, nameDecl : NameDecl, shape : Shape, syntacticCategory : Handle | undefined) {
         this.head = head;
         this.nameDecl = nameDecl;
         this.shape = shape;
-        this.syntacticCategory = syntacticCategory;
+        this.#syntacticCategory = syntacticCategory;
         this.#syntax_specs = [];
         this.#definition = undefined;
         freeze(this);
+    }
+
+    get syntacticCategory() : Handle | undefined {
+        return this.#syntacticCategory;
+    }
+
+    set syntacticCategory(h : Handle | undefined) {
+        if (this.#syntacticCategory !== undefined) throw new Error("Cannot unset syntactic category.");
+        this.#syntacticCategory = h;
     }
 
     addSyntaxSpec(spec : SyntaxSpec) {
@@ -396,6 +405,8 @@ export class Theory {
     }
 
     lookupSyntacticCategory(name : string) : Handle | undefined {
+        if (name === "'atomic") return this.SC_ATOMIC;
+        if (name === "'term") return this.SC_TERM;
         const handle = this.#scNormals.get(normalConstId(name));
         if (handle === undefined) return undefined;
         if (this.#syntacticCategories[handle].decl.matches(name)) return handle;
@@ -420,7 +431,7 @@ export class Theory {
         return handle;
     }
 
-    ensureSyntacticCategory(span : Span, decl : string, isNecessarilyDeclaration : boolean) : Handle | undefined {
+    ensureSyntacticCategory(span : Span, decl : string, isNecessarilyDeclaration : boolean, loose : boolean) : Handle | undefined {
         const nameDecl = NameDecl.mk(span, decl);
         if (nameDecl === undefined) {
             this.error(span, "Invalid syntactic category declaration '" + decl + "'.");
@@ -438,11 +449,14 @@ export class Theory {
         }
         if (defined === 0) {
             const sc = this.#addSyntacticCategory(nameDecl);
-            if (!isNecessarilyDeclaration) {
+            if (!loose) {
                 this.addSyntacticCategoryPriority(span, sc, this.SC_TERM);
                 this.addSyntacticCategoryPriority(span, this.SC_ATOMIC, sc);
             }
             return sc;
+        }
+        if (loose) {
+            this.error(span, "Syntactic category cannot be redeclared as loose.");
         }
         if (isNecessarilyDeclaration || nameDecl.isDeclaration) {
             this.error(span, "Syntactic category is already declared as '" + this.#syntacticCategories[handle].decl.decl + "'.");
@@ -539,16 +553,27 @@ export class Theory {
                 return this.#addSyntacticCategory(nameDecl);
             }
         }
-        const sc = this.ensureSyntacticCategory(head.abstraction.span, head.abstraction.str, true);
-        if (sc === undefined) return;
-        if (shape.arity === 0) {
-            this.addSyntacticCategoryPriority(nameDecl.span, sc, this.SC_ATOMIC);
-        } else {
-            this.addSyntacticCategoryPriority(nameDecl.span, sc, this.SC_TERM);
-            this.addSyntacticCategoryPriority(nameDecl.span, this.SC_ATOMIC, sc);
+        const info = new AbstractionInfo(head, nameDecl, shape, undefined);
+        this.#current = info;        
+    }
+
+    ensureSyntacticCategoryOfDeclaration() {
+        if (this.#current === undefined) throw new Error("There is no declaration, start one first.");
+        const head = this.#current.head;
+        const span = head.abstraction.span;
+        const sc = this.ensureSyntacticCategory(head.abstraction.span, head.abstraction.str, true, true);
+        if (sc === undefined) {
+            this.error(span, "Cannot redeclare syntactic category.");
+            return;
         }
-        const info = new AbstractionInfo(head, nameDecl, shape, sc);
-        this.#current = info;
+        const shape = this.#current.shape;
+        if (shape.arity === 0) {
+            this.addSyntacticCategoryPriority(span, sc, this.SC_ATOMIC);
+        } else {
+            this.addSyntacticCategoryPriority(span, sc, this.SC_TERM);
+            this.addSyntacticCategoryPriority(span, this.SC_ATOMIC, sc);
+        }
+        this.#current.syntacticCategory = sc;
     }
 
     endDeclaration() {

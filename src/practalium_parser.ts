@@ -19,6 +19,9 @@ export enum TokenType {
     syntactic_category,
     syntactic_category_declaration,
     syntactic_category_keyword,
+    syntactic_category_atomic,
+    syntactic_category_term,
+    loose,
     free_variable,
     bound_variable,
     variable,
@@ -180,9 +183,6 @@ const identifierL : Lexer = seqL(idLetterL, repL(idAlphaL), repL(seqL(idHyphenL,
 const idDeclFragmentL = seqL(literalL("("), repL(firstL(idAlphaL, idHyphenL)), literalL(")"))
 const idDeclL = seqL(firstL(idLetterL, idDeclFragmentL), repL(firstL(idAlphaL, idHyphenL, idDeclFragmentL)));
 
-const identifierDP : P = debugDP("identifier", tokenDP(identifierL, TokenType.identifier));
-//const identifierDeclDP : P = tokenDP(idDeclL, TokenType.identifierDecl); 
-
 const boundVariableDP : P = tokenDP(identifierL, TokenType.bound_variable);
 const freeVariableL : Lexer = seqL(optL(literalL("?")), identifierL)
 const freeVariableDP : P = tokenDP(freeVariableL, TokenType.free_variable);
@@ -203,19 +203,9 @@ const squareOpenDP : P = tokenDP(literalL("["), TokenType.square_open);
 const squareCloseDP : P = tokenDP(literalL("]"), TokenType.square_close);
 const dotDP : P = tokenDP(literalL("."), TokenType.dot);
 const commaDP : P = tokenDP(literalL(","), TokenType.comma);
-const symbolsDP : P = orDP(roundOpenDP, roundCloseDP, squareOpenDP, squareCloseDP, dotDP);
 
-function cheatDP(chars : (c : string) => boolean, type : TokenType) : P {
-    return tokenDP(charL(chars), type);
-}
-
-const cheatFreeDP = cheatDP(c => c >= "A" && c <= "Z", TokenType.free_variable);
-const cheatIdDP = cheatDP(c => c >= "a" && c <= "z", TokenType.bound_variable);
-const cheatSyntaxDP = cheatDP(c => true, TokenType.syntax_fragment); 
 
 const termDP : P = useDP((lines, state) => totalTermOfDP(lines, state.termParser));
-
-//repDP(orDP(spacesDP, symbolsDP, abstractionDP, cheatFreeDP, cheatIdDP, cheatSyntaxDP, invalidCharDP))
 
 function allOfDP(type : TokenType) : P {
     return repDP(orDP(spacesDP, tokenDP(nonspaces1L, type)));
@@ -299,34 +289,6 @@ const errorDP : P = emptyDP();
 const errorBodyDP : P = anyOfDP(TokenType.invalid);
 const errorSection : S = { bullet: errorDP, body: errorBodyDP, type: SectionDataNone(SectionName.error) };
 
-const placeHolderBodyDP : P = repDP(tokenDP(anyCharL, TokenType.whitespace));
-
-/*function pushVars(lines : TextLines, result : R) : R {
-    if (result === undefined) return undefined;
-    const r = result.result;
-    const frees : VarSet = new Set();
-    const bounds : VarSet = new Set();
-    for (const t of iterateTokensDeep(r)) {
-        if (t.type === TokenType.free_variable) {
-            const text = normalizeVar(textOfToken(lines, t));
-            frees.add(text);
-        }
-        if (t.type === TokenType.bound_variable) {
-            const text = normalizeVar(textOfToken(lines, t));
-            bounds.add(text);
-        }
-    }
-    const sortedFrees = [...frees].sort((x,y) => y.length - x.length);
-    const sortedBounds = [...bounds].sort((x,y) => y.length - x.length);
-    const freeVarsParsers : P[] = sortedFrees.map(v => tokenDP(seqL(literalL("#"), optL(literalL("?")), literalL(v)), TokenType.free_variable));
-    const freeVarParser : P = seqDP(orDP(...freeVarsParsers), optDP(syntacticSuffixDP));
-    const boundVarsParsers : P[] = sortedBounds.map(v => tokenDP(literalL("#" + v), TokenType.bound_variable));
-    const boundVarParser : P = orDP(...boundVarsParsers);
-    const varParser : P = orDP(boundVarParser, freeVarParser);
-    result.state.varParser = varParser;
-    return result;
-}*/
-
 function varParserDP(head : Head) : P {
     const frees : Set<string> = new Set();
     const bounds : Set<string> = new Set();
@@ -357,14 +319,30 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
     let handle1 : Handle | undefined = undefined;
     let handle1IsHigher : boolean = true;
     let opSpan : Span | undefined = undefined;
+    let loose = false;
     for (const token of iterateTokensFlat(result.result)) {
+        if (token.type === TokenType.syntactic_category_atomic || token.type === TokenType.syntactic_category_term) {
+            const handle2 = token.type === TokenType.syntactic_category_atomic ? theory.SC_ATOMIC : theory.SC_TERM;
+            if (handle1 !== undefined) {  
+                if (handle1IsHigher) {
+                    theory.addSyntacticCategoryPriority(opSpan!, handle1, handle2);
+                } else {
+                    theory.addSyntacticCategoryPriority(opSpan!, handle2, handle1);
+                }
+            }
+            handle1 = handle2;
+            continue;
+        } 
+        if (token.type === TokenType.loose) {
+            loose = true;
+            continue;
+        }
         const sc = readSyntacticCategory(lines, token);
         if (sc !== undefined) {
-            //const span = spanOfResult(token);
             if (theory.lookupSyntacticCategory(sc.str) === undefined) {
                 token.type = TokenType.syntactic_category_declaration;
             }
-            const handle2 = theory.ensureSyntacticCategory(sc.span, sc.str, false);
+            const handle2 = theory.ensureSyntacticCategory(sc.span, sc.str, false, loose);
             if (handle1 !== undefined && handle2 !== undefined) {  
                 if (handle1IsHigher) {
                     theory.addSyntacticCategoryPriority(opSpan!, handle1, handle2);
@@ -379,10 +357,12 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
                 case TokenType.syntactic_transitive_greater:
                     opSpan = spanOfResult(token);
                     handle1IsHigher = true;
+                    loose = false;
                     break;
                 case TokenType.syntactic_transitive_less:
                     opSpan = spanOfResult(token);
                     handle1IsHigher = false;
+                    loose = false;
                     break;
                 default:
                     throw new Error("Unexpected token of type: " + TokenType[token.type]);
@@ -398,7 +378,7 @@ function isntNameChar(c : string) : boolean {
 
 function readTokenAsName<T>(lines : TextLines, token : Token<T>) : SpanStr {
     let text = textOfToken(lines, token);
-    while (text.length > 0 && isntNameChar(text.charAt(0))) text = text.slice(1);
+    if (text.length > 0 && isntNameChar(text.charAt(0))) text = text.slice(1);
     if (text.endsWith("'")) text = text.slice(0, text.length - 1);
     return new SpanStr(spanOfResult(token), text);
 }
@@ -469,15 +449,12 @@ function addDeclarationHead(lines : TextLines, result : R) : R {
     return result;
 }
 
-function endDeclaration(lines : TextLines, result : R) : R {
-    if (result === undefined) return undefined;
-    result.state.theory.endDeclaration();
-    return result;
-}
-
-const syntacticCategoryDP : P = seqDP(tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category)); 
-const syntacticCategoryKeywordDP : P = seqDP(tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category_keyword)); 
-const syntacticCategoryDeclDP : P = seqDP(tokenDP(seqL(literalL("'"), idDeclL), TokenType.syntactic_category)); 
+const syntacticCategoryAtomicDP : P = tokenDP(seqL(literalL("''atomic"), optL(literalL("'"))), TokenType.syntactic_category_atomic); 
+const syntacticCategoryTermDP : P = tokenDP(seqL(literalL("''term"), optL(literalL("'"))), TokenType.syntactic_category_term); 
+const looseDP : P = tokenDP(literalL("loose"), TokenType.loose);
+const syntacticCategoryDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category); 
+const syntacticCategoryKeywordDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category_keyword); 
+const syntacticCategoryDeclDP : P = seqDP(optDP(looseDP, optSpacesDP), orDP(syntacticCategoryAtomicDP, syntacticCategoryTermDP, tokenDP(seqL(literalL("'"), idDeclL), TokenType.syntactic_category))); 
 const syntacticCategoryTransitiveGreaterDP : P = tokenDP(literalL(">"), TokenType.syntactic_transitive_greater);
 const syntacticCategoryTransitiveLessDP : P = tokenDP(literalL("<"), TokenType.syntactic_transitive_less);
 const syntacticCategoryComparatorDP : P = orDP(
@@ -522,6 +499,15 @@ function varParserOf(lines : TextLines, state : ParseState) : P {
     return force(state.varParser);
 }
 
+function isSyntacticCategory(t : TokenType) : boolean {
+    return t === TokenType.syntactic_category || t === TokenType.syntactic_category_atomic || t === TokenType.syntactic_category_term;
+}
+
+function usesBuiltInCategory(lines : TextLines, results : Result<SectionData, TokenType>[]) : boolean {
+    const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>));
+    return category.str === "";
+}
+
 function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenType>[]) : SyntaxSpec | undefined {
     const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>));
     let fragments : SyntaxFragment[] = [];
@@ -545,7 +531,7 @@ function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenTy
             case TokenType.free_variable: {
                 const s = force(readTokenAsName(lines, results[i] as Token<TokenType>));
                 i += 1;
-                if (i < results.length && results[i].kind === ResultKind.TOKEN && results[i].type === TokenType.syntactic_category) {
+                if (i < results.length && results[i].kind === ResultKind.TOKEN && isSyntacticCategory(results[i].type as TokenType)) {
                     const sc = force(readTokenAsName(lines, results[i] as Token<TokenType>));
                     fragments.push({ kind: SyntaxFragmentKind.free_variable, name: s, syntactic_category: sc });
                     i += 1;
@@ -580,6 +566,16 @@ function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenTy
 function processDeclaration(lines : TextLines, result : R) : R {
     if (result === undefined) return undefined;   
     if (!result.state.theory.hasCurrent) return result;
+    let usesBuiltIn = false;
+    for (const section of iterateContentSections(result.result)) {
+        if (section.kind === ResultKind.TREE && section.type?.type === SectionName.syntax) {
+            if (usesBuiltInCategory(lines, [...iterateResultsDeep(s => s && s.type === SectionName.newline, section)]))
+                usesBuiltIn = true;
+        } 
+    }
+    if (usesBuiltIn) { 
+        result.state.theory.ensureSyntacticCategoryOfDeclaration();
+    }
     for (const section of iterateContentSections(result.result)) {
         if (section.kind === ResultKind.TREE && section.type?.type === SectionName.syntax) {
             const spec = readSyntaxSpec(lines, [...iterateResultsDeep(s => s && s.type === SectionName.newline, section)]);
@@ -603,12 +599,6 @@ const boundArgsDP : P = seqDP(boundVariableDP, repDP(optWhitespaceDP, boundVaria
 const boundParamsDP : P = seqDP(boundVariableDP, repDP(optWhitespaceDP, commaDP, optWhitespaceDP, boundVariableDP));
 const freeArgDP : P = seqDP(freeVariableDP, optDP(squareOpenDP, optDP(optWhitespaceDP, boundParamsDP), optWhitespaceDP, squareCloseDP));
 const declarationDP : P = seqDP(abstractionDeclDP, optDP(optWhitespaceDP, boundArgsDP), repDP(optWhitespaceDP, freeArgDP));
-//const declarationArgsDP : P = seqDP(optDP(boundArgsDP), repDP(optWhitespaceDP, freeArgDP));
-//const declarationBodySection : S = { bullet : declarationArgsDP, body : enumDP(commentSection, errorSection), type : undefined };
-//const declarationBodyDP : P = sectionDP(declarationBodySection);  //seqDP(declarationArgsDP, enumDP(commentSection, errorSection));
-//const quickSyntaxBulletDP : P = seqDP(tokenDP(literalL(":"), TokenType.secondary_keyword), lookaheadInLineDP(nonspaceL, false));
-//const quickSyntaxBodyDP : P = repDP(tokenDP(nonspaces1L, TokenType.quick_syntax), optWhitespaceDP);
-//const quickSyntaxSection : S = { bullet : quickSyntaxBulletDP, body : totalOfDP(quickSyntaxBodyDP), type : SectionName.quick_syntax };
 const declarationBody = enumDP(definitionSection, syntaxSection, inlineLatexSection, displayLatexSection, commentSection, errorSection)
 const declarationSection : S = { bullet : modifyResultDP(declarationDP, addDeclarationHead), 
     body: declarationBody, type: SectionDataNone(SectionName.declaration), process: processDeclaration};
