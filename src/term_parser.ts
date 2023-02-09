@@ -1,7 +1,7 @@
 import { Shape } from "./logic/shape";
 import { ParseState, SectionData, SectionDataCustom, SectionDataNone, SectionDataTerm, SectionDataTerms, SectionName, TokenType } from "./practalium_parser";
 import { DetParser, eofDP, modifyResultDP, newlineDP, optDP, orDP, rep1DP, seqDP, strictTokenDP, textOfToken, Token, tokenDP } from "./pyramids/deterministic_parser";
-import { cloneExprGrammar, Expr, ExprGrammar, opt, or, printExpr, rule, seq, star } from "./pyramids/expr_grammar";
+import { cloneExprGrammar, Expr, ExprGrammar, ExprKind, opt, or, printExpr, rule, seq, star } from "./pyramids/expr_grammar";
 import { Sym } from "./pyramids/grammar_symbols";
 import { charL, literalL, optL, rep1L, repL, seqL } from "./pyramids/lexer";
 import { lrDP, mkTerminalParsers, orGreedyTerminalParsers, TerminalParsers } from "./pyramids/lr_parser";
@@ -29,6 +29,8 @@ export const basic_grammar : ExprGrammar = {
 
         rule("Term-base", "Operation-app"),
         rule("Term-base", "Operator-app"),
+        rule("Term-base-nonatomic", "Operation-app"),
+        rule("Term-base-nonatomic", "Operator-app"),
 
         /** 
          * The following is automatically generated from Term < Atomic:
@@ -72,11 +74,19 @@ export const basic_grammar : ExprGrammar = {
         //rule("Params", ws, "Atomic", "Params"),
 
         //rule("Params", ws, "Term-greater-non-atomic"),
+        //rule("Params", ws, "Atomic-base"),
+        //rule("Params", ws, "Atomic-greater"),
+        //rule("Params", ws, "Term-base"),
+        //rule("Params", ws, "Atomic-base", "Params"),
+        //rule("Params", ws, "Atomic-greater", "Params")
+
         rule("Params", ws, "Atomic-base"),
         rule("Params", ws, "Atomic-greater"),
-        rule("Params", ws, "Term-base"),
+        rule("Params", ws, "Term-greater-nonatomic"),
+        rule("Params", ws, "Term-base-nonatomic"),        
         rule("Params", ws, "Atomic-base", "Params"),
         rule("Params", ws, "Atomic-greater", "Params")
+
     ],
 
     distinct : [
@@ -231,6 +241,9 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     const texts : Map<string, nat> = new Map();
     const syntactic_categories : Set<nat> = new Set([theory.SC_ATOMIC, theory.SC_TERM]);
     const labels : Map<string, SectionData> = new Map();
+    const successors = computeSyntacticCategorySuccessors(theory);
+    const atomics = new Set(successors.get(theory.SC_ATOMIC) ?? new Set());    
+    atomics.add(theory.SC_ATOMIC);
 
     function error(span : Span, msg : string) {
         theory.error(span, msg);
@@ -244,19 +257,22 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
         else return "S`" + sc;
     }
 
-    function sc_greater(sc : Handle) : string {
+    function sc_greater(sc : Handle, nonatomic : boolean) : string {
+        if (nonatomic && atomics.has(sc)) return "";
         if (!sc_done) syntactic_categories.add(sc);
-        return sc_name(sc) + "-greater";
+        return sc_name(sc) + "-greater" + (nonatomic ? "-nonatomic" : "");
     }
 
-    function sc_base(sc : Handle) : string {
+    function sc_base(sc : Handle, nonatomic : boolean) : string {
+        if (nonatomic && atomics.has(sc)) return "";
         if (!sc_done) syntactic_categories.add(sc);
-        return sc_name(sc) + "-base";
+        return sc_name(sc) + "-base" + (nonatomic ? "-nonatomic" : "");;
     }
 
-    function sc_this(sc : Handle) : string {
+    function sc_this(sc : Handle, nonatomic : boolean) : string {
+        if (nonatomic && atomics.has(sc)) return "";
         if (!sc_done) syntactic_categories.add(sc);
-        return sc_name(sc);
+        return sc_name(sc) + (nonatomic ? "-nonatomic" : "");
         //if (sc === theory.SC_ATOMIC || sc === theory.SC_TERM) return sc_name(sc);
         //else return sc_name(sc) + "-this";
     }
@@ -270,12 +286,24 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
         return "§" + h;
     }
 
+    function invalid(expr : Expr) : boolean {
+        if (typeof expr === "string") return expr === "";
+        for (const param of expr.params) {
+            if (invalid(param)) return true;
+        }
+        return false;
+    }
+
     function addRule(sym : Sym, ...rhs : Expr[]) {
+        if (sym === "") return;
+        for (const r of rhs) {
+            if (invalid(r)) return;
+        }
         rules.push({lhs : sym, rhs : seq(...rhs)});
     }
 
     const abstractions = theory.abstractions;
-    const bases : Set<Handle> = new Set([theory.SC_ATOMIC, theory.SC_TERM]);
+    //const bases : Set<Handle> = new Set([theory.SC_ATOMIC, theory.SC_TERM]);
     for (const [abstr_handle, abstraction] of abstractions.entries()) {
         const specs = abstraction.syntax_specs;
         for (let i = 0; i < specs.length; i++) {
@@ -287,6 +315,7 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
                 continue;
             }
             const rhs : Expr[] = [];
+            const rhs_nonatomic : Expr[] = [];
             const used_bounds : Map<string, nat> = new Map();
             const used_vars : Map<string, nat> = new Map();
             for (const fragment of spec.fragments) {
@@ -294,9 +323,11 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
                 switch (kind) {
                     case SyntaxFragmentKind.mandatory_whitespace: 
                         rhs.push("ws");
+                        rhs_nonatomic.push("ws");
                         break;
                     case SyntaxFragmentKind.optional_whitespace:
                         rhs.push("ows");
+                        rhs_nonatomic.push("ows");
                         break;
                     case SyntaxFragmentKind.bound_variable:
                         if (used_bounds.has(fragment.name.str)) {
@@ -304,6 +335,7 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
                             break;
                         }
                         rhs.push("bound-var");
+                        rhs_nonatomic.push("bound-var");
                         used_bounds.set(fragment.name.str, used_bounds.size);
                         break;
                     case SyntaxFragmentKind.free_variable:
@@ -312,51 +344,61 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
                             break;
                         }
                         used_vars.set(fragment.name.str, used_vars.size);
+                        const nonatomic = rhs.length === 0;
                         if (fragment.syntactic_category === undefined) {
-                            rhs.push(sc_greater(sc))
+                            rhs.push(sc_greater(sc, false));
+                            rhs_nonatomic.push(sc_greater(sc, nonatomic));
                         } else {
                             if (fragment.syntactic_category.str === "") {
-                                rhs.push(sc_this(sc));
+                                rhs.push(sc_this(sc, false));
+                                rhs_nonatomic.push(sc_this(sc, nonatomic));
                             } else {
                                 const fsc = theory.lookupSyntacticCategory(fragment.syntactic_category.str);
                                 if (fsc === undefined) {
                                     error(spec.syntactic_category.span, "Unknown syntactic category '" + fragment.syntactic_category.str + "'.");
                                 } else {
-                                    rhs.push(sc_this(fsc));
+                                    rhs.push(sc_this(fsc, false));
+                                    rhs_nonatomic.push(sc_this(fsc, nonatomic));
                                 }
                             }
                         } 
                         break;
                     case SyntaxFragmentKind.text:
                         rhs.push(text(fragment.text.str));
+                        rhs_nonatomic.push(text(fragment.text.str));
                         break;
                     default: assertNever(kind);
                 }
             }
-            const A = "A`" + abstr_handle + "-" + i;
-            labels.set(A, SectionDataCustom(abstr_handle, abstraction.head, used_vars, used_bounds));
-            addRule(A, ...rhs);
-            addRule(sc_base(sc), A);
-            bases.add(sc);
+            const base = "Base`" + abstr_handle + "-" + i;
+            labels.set(base, SectionDataCustom(abstr_handle, abstraction.head, used_vars, used_bounds));
+            addRule(base, ...rhs);
+            addRule(sc_base(sc, false), base);
+            const base_nonatomic = "Base-nonatomic`" + abstr_handle + "-" + i;
+            labels.set(base_nonatomic, SectionDataCustom(abstr_handle, abstraction.head, used_vars, used_bounds));
+            addRule(base_nonatomic, ...rhs_nonatomic);
+            addRule(sc_base(sc, true), base_nonatomic);
         }
         
     }
     
     sc_done = true;
 
-    const successors = computeSyntacticCategorySuccessors(theory);
     for (const sc of syntactic_categories) {
-        //if (sc === theory.SC_TERM) continue;
-        const lhs = sc_greater(sc);
-        const greater_bases : string[] = [];
-        for (const succ of successors.get(sc) ?? []) {
-            greater_bases.push(sc_base(succ));
-        }
-        if (greater_bases.length > 0) {
-            addRule(lhs, or(...greater_bases));
-            addRule(sc_this(sc), or(sc_base(sc), sc_greater(sc)));
-        } else {
-            addRule(sc_this(sc), sc_base(sc));
+        for (const nonatomic of [true, false]) {
+            if (nonatomic && atomics.has(sc)) continue;
+            const lhs = sc_greater(sc, nonatomic);
+            const greater_bases : string[] = [];
+            for (const succ of successors.get(sc) ?? []) {
+                const base = sc_base(succ, nonatomic);
+                if (base !== "") greater_bases.push(base);
+            }
+            if (greater_bases.length > 0) {
+                addRule(lhs, or(...greater_bases));
+                addRule(sc_this(sc, nonatomic), or(sc_base(sc, nonatomic), sc_greater(sc, nonatomic)));
+            } else {
+                addRule(sc_this(sc, nonatomic), sc_base(sc, nonatomic));
+            }
         }
     }
 
