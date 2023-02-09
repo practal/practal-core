@@ -21,29 +21,10 @@ export const basic_grammar : ExprGrammar = {
     rules : [
         rule("Start", "Term", "final"),
 
-        //rule("Term", "Atomic"),
-        //rule("Term", "Operation-app"),
-        //rule("Term", "Operator-app"),
-        //rule("Term", "Term-base"),
-        //rule("Term", "Term-greater"),
-
         rule("Term-base", "Operation-app"),
         rule("Term-base", "Operator-app"),
         rule("Term-base-nonatomic", "Operation-app"),
         rule("Term-base-nonatomic", "Operator-app"),
-
-        /** 
-         * The following is automatically generated from Term < Atomic:
-         *    
-         *     rule("Term", "Term-base"),
-         *     rule("Term", "Term-greater"),
-         *     rule("Atomic", "Atomic-base"),
-         *     rule("Atomic", "Atomic-greater"),
-         *     rule("Term-greater", "Atomic-base")
-         */
-        
-        //rule("Atomic", "Atomic-base"),
-        //rule("Atomic", "Atomic-greater"),
 
         rule("Atomic-base", "Var-app"),
         rule("Atomic-base", "Var"),
@@ -68,24 +49,6 @@ export const basic_grammar : ExprGrammar = {
         rule("Operation-app", "operation-id", "Params"),
         rule("Operator-app", "operator-id", star(ows, "bound-var"), ows, "dot", "Params"),
 
-        //rule("Params", ws, "Term-greater-non-atomic"),
-        //rule("Params", ws, "Atomic-base"),
-        //rule("Params", ws, "Atomic-greater"),
-        //rule("Params", ws, "Term-base"),
-        //rule("Params", ws, "Atomic-base", "Params"),
-        //rule("Params", ws, "Atomic-greater", "Params")
-
-        //rule("Params", ws, "Atomic"),
-        //rule("Params", ws, "Atomic", "Params"),
-
-        //rule("Params", ws, "Term-greater-non-atomic"),
-        //rule("Params", ws, "Atomic-base"),
-        //rule("Params", ws, "Atomic-greater"),
-        //rule("Params", ws, "Term-base"),
-        //rule("Params", ws, "Atomic-base", "Params"),
-        //rule("Params", ws, "Atomic-greater", "Params")
-
-        //rule("Params", ws, "Atomic"),
         rule("Params", ws, "Term-greater-atomic"),
         rule("Params", ws, "Term-greater-nonatomic"),
         rule("Params", ws, "Term-base-nonatomic"),        
@@ -338,13 +301,11 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     }
 
     const abstractions = theory.abstractions;
-    //const bases : Set<Handle> = new Set([theory.SC_ATOMIC, theory.SC_TERM]);
     for (const [abstr_handle, abstraction] of abstractions.entries()) {
         const specs = abstraction.syntax_specs;
         for (let i = 0; i < specs.length; i++) {
             const spec = specs[i];
             const sc = spec.syntactic_category.str === "" ? abstraction.syntacticCategory : theory.lookupSyntacticCategory(spec.syntactic_category.str);
-            //if (sc === abstraction.syntacticCategory && abstraction.shape.arity === 0) atomic_scs.add(sc);
             if (sc === undefined) {
                 error(spec.syntactic_category.span, "Unknown syntactic category '" + spec.syntactic_category.str + "'.");
                 continue;
@@ -471,28 +432,6 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
         }
     }
 
-    /*{ // theory.SC_TERM
-        const sc = theory.SC_TERM;
-        const atomic = successors.get(theory.SC_ATOMIC) ?? new Set();
-        atomic.add(theory.SC_ATOMIC);
-        const lhs = sc_greater(sc);
-        const greater_bases : string[] = [];
-        const greater_bases_non_atomic : string[] = [];
-        for (const succ of successors.get(sc) ?? []) {
-            greater_bases.push(sc_base(succ));
-            if (!atomic.has(succ)) greater_bases_non_atomic.push(sc_base(succ));
-        }
-        if (greater_bases.length > 0) {
-            addRule(lhs, or(...greater_bases));
-            addRule(sc_this(sc), or(sc_base(sc), sc_greater(sc)));
-        } else {
-            addRule(sc_this(sc), sc_base(sc));
-        }
-        if (greater_bases_non_atomic.length > 0) {
-            addRule("Term-greater-non-atomic", or(...greater_bases_non_atomic));
-        } 
-    }*/
-
     return { rules : rules, texts : texts, syntactic_categories : syntactic_categories, labels : labels };
 }
 
@@ -512,7 +451,6 @@ export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar
     }*/
     const fragments_parser : TerminalParsers<ParseState, SectionData, TokenType> = mkTerminalParsers(texts.map(t => ["§" + t[1], tokenDP(literalL(t[0]), TokenType.custom_syntax)]));
     const custom_terminal_parsers : TerminalParsers<ParseState, SectionData, TokenType> = orGreedyTerminalParsers([terminalParsers1, fragments_parser, terminalParsers2]);
-    //console.log("creating custom LR parser ...");
     const labels = [...basic_labels, ...customSyntax.labels];
     const customLRParser = lrDP(customGrammar, labels, custom_terminal_parsers, SectionDataTerm(SectionName.invalid)); 
     const conflicts = customLRParser.conflicts;
