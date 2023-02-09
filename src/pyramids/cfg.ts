@@ -71,9 +71,9 @@ export function removeUnproductiveNonterminals(rules : Rule[]) : Rule[] {
 
     const result = productiveRules.filter(r => r !== null) as Rule[];
 
-    if (rules.length !== result.length) {
+    /*if (rules.length !== result.length) {
         debug("Removed " + (rules.length - result.length) + " rules!");
-    }
+    }*/
 
     return result;
 }

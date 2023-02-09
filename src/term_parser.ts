@@ -291,7 +291,6 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     }
 
     function sc_base_atomic(sc : Handle) : string {
-        if (!atomics.has(sc)) return "";
         if (!sc_done) syntactic_categories.add(sc);
         return sc_name(sc) + "-base-atomic";
     }
@@ -501,11 +500,11 @@ export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar
     let customSyntax = generateCustomSyntax(theory);
     let customGrammar = cloneExprGrammar(basic_grammar);
     customGrammar.rules.push(...customSyntax.rules);
-    debug("-------------");
+    /*debug("-------------");
     for (const rule of customGrammar.rules) {
         debug(rule.lhs + " => " + printExpr(rule.rhs));
     }
-    debug("-------------");
+    debug("-------------");*/
     const texts = [...customSyntax.texts].sort((a, b) => b[0].length - a[0].length);
     force(customGrammar.distinct)[0].push(...texts.map(t => "§" + t[1]));
     /*for (let i = 0; i < texts.length; i++) {

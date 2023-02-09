@@ -74,12 +74,12 @@ export function lrDP<State, S, T>(exprGrammar : ExprGrammar, nonterminal_labels 
     const G = convertExprGrammar(exprGrammar);
     const X = extendGrammar(G.grammar);
     const lr1 = computeLR1Graph(X);
-    debug("===================");
+    /*debug("===================");
     for (let i = 0; i < G.grammar.rules.length; i++) {
         const rule = G.grammar.rules[i];
         debug("Rule " + i + ") " + rule.asString(G.symbols));
     }
-    debug("===================");
+    debug("===================");*/
     //console.log("Number of states is " + lr1.states.length + ".");
     //let withConflicts = 0
     const nextTerminals : Set<int>[] = [];
