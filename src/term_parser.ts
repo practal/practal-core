@@ -80,12 +80,12 @@ export const basic_grammar : ExprGrammar = {
         //rule("Params", ws, "Atomic-base", "Params"),
         //rule("Params", ws, "Atomic-greater", "Params")
 
-        rule("Params", ws, "Atomic-base"),
-        rule("Params", ws, "Atomic-greater"),
+        rule("Params", ws, "Atomic"),
+        //rule("Params", ws, "Term-greater-atomic"),
         rule("Params", ws, "Term-greater-nonatomic"),
         rule("Params", ws, "Term-base-nonatomic"),        
-        rule("Params", ws, "Atomic-base", "Params"),
-        rule("Params", ws, "Atomic-greater", "Params")
+        rule("Params", ws, "Atomic", "Params"),
+
 
     ],
 
