@@ -5,7 +5,7 @@ import { Span, spanOfResult, SpanStr } from "./pyramids/span";
 import { absoluteSpan, TextLines } from "./pyramids/textlines";
 import { nat } from "./things/primitives";
 import { assertNever, force, freeze, notImplemented, privateConstructor } from "./things/utils";
-import { UITerm } from "./uiterm";
+import { UIRule, UITerm } from "./uiterm";
 import { debug } from "./things/debug";
 import { firstL, Lexer } from "./pyramids/lexer";
 
@@ -332,6 +332,7 @@ export class Theory {
     #online_dag : OnlineDAG<Handle>
     #SC_ATOMIC : Handle
     #SC_TERM : Handle
+    #axioms : [SpanStr | undefined, UIRule][];
 
     private constructor(lines : TextLines) {
         this.#lines = lines;
@@ -346,6 +347,7 @@ export class Theory {
         this.#SC_ATOMIC = this.#addSyntacticCategory(NameDecl.SC_ATOMIC);
         this.#SC_TERM = this.#addSyntacticCategory(NameDecl.SC_TERM);
         this.addSyntacticCategoryPriority(Span.none, this.#SC_ATOMIC, this.#SC_TERM);
+        this.#axioms = [];
     } 
 
     get SC_ATOMIC() : Handle { return this.#SC_ATOMIC; }
@@ -688,6 +690,10 @@ export class Theory {
         } else {
             return false;
         }        
+    }
+
+    addAxiom(label : SpanStr | undefined, axiom : UIRule) {
+        this.#axioms.push([label, axiom]);
     }
 
 }

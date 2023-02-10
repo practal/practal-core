@@ -1,5 +1,6 @@
+import { join } from "path";
 import { SemanticTokens } from "vscode";
-import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, lookaheadInLineDP, optDP, orDP, rep1DP, repDP, Section, sectionDP, seqDP, textOfToken, tokenDP, modifyDP, useDP, newlineDP, modifyResultDP, Token, iterateTokensFlat, printResult, Result, ResultKind, iterateContentSections, iterateResultsDeep, Tree, endOf, dependentSeqDP, iterateContentTokens } from "./pyramids/deterministic_parser";
+import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, lookaheadInLineDP, optDP, orDP, rep1DP, repDP, Section, sectionDP, seqDP, textOfToken, tokenDP, modifyDP, useDP, newlineDP, modifyResultDP, Token, iterateTokensFlat, printResult, Result, ResultKind, iterateContentSections, iterateResultsDeep, Tree, endOf, dependentSeqDP, iterateContentTokens, chainDP, joinResults } from "./pyramids/deterministic_parser";
 import { alphaNumL, anyCharL, charL, charsL, firstL, hyphenL, letterL, Lexer, literalL, lookaheadL, nonspaceL, nonspaces1L, nonspacesL, optL, rep1L, repL, seqL, spaces1L, underscoreL } from "./pyramids/lexer";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
 import { absoluteSpan, TextLines } from "./pyramids/textlines";
@@ -7,7 +8,7 @@ import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, Theory } 
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented, Printer } from "./things/utils";
-import { constructUITermFromResult, printUITerm, UIRule, UITemplate, UITerm, UITermAbstrApp, UITermVarApp, validateUITerm, VarName } from "./uiterm";
+import { constructUITermFromResult, mkUIRule, mkUITemplate, mkUIVar, printUITerm, UIRule, UITemplate, UITerm, UITermAbstrApp, UITermVarApp, UIVar, validateUITerm, VarName } from "./uiterm";
 
 export enum TokenType {
     module_name,
@@ -67,6 +68,8 @@ export enum SectionName {
     display_latex,
     newline,
     definition,
+    premise,
+    conclusion,
 
     // Terms
     operation_app,
@@ -86,7 +89,7 @@ export enum SectionName {
 
 }
 
-export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms | SectionDataCustom | SectionDataTemplate | SectionDataRule
+export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms | SectionDataCustom | SectionDataTemplate | SectionDataRule | SectionDataPremise | SectionDataConclusion
 
 export type SectionName_DataNone = 
     SectionName.theory | SectionName.axiom | SectionName.declaration | SectionName.comment | SectionName.error |
@@ -154,26 +157,53 @@ export function SectionDataCustom(abstr : Handle, head : Head, frees : Map<strin
 
 export type SectionDataTemplate = {
     type : SectionName.template,
-    template : UITemplate
+    template? : UITemplate 
 }
 
-export function SectionDataTemplate(template : UITemplate) : SectionDataTemplate {
+export function SectionDataTemplate(template? : UITemplate) : SectionDataTemplate {
     return {
         type : SectionName.template,
-        template : template
+        template : template 
     };
 }
 
+export type SectionDataPremise = {
+    type : SectionName.premise,
+    label? : SpanStr,
+    premise? : UITemplate
+}
+
+export function SectionDataPremise(label? : SpanStr, premise? : UITemplate) : SectionDataPremise {
+    return {
+        type : SectionName.premise,
+        label : label,
+        premise : premise
+    };
+}
+
+export type SectionDataConclusion = {
+    type : SectionName.conclusion,
+    label? : SpanStr,
+    conclusion? : UITerm
+}
+
+export function SectionDataConclusion(label? : SpanStr, conclusion? : UITerm) : SectionDataConclusion {
+    return {
+        type : SectionName.conclusion,
+        label : label,
+        conclusion : conclusion
+    };
+}
+
+
 export type SectionDataRule = {
     type : SectionName.rule,
-    label : SpanStr | undefined,
     rule : UIRule
 }
 
-export function SectionDataRule(label : SpanStr | undefined, rule : UIRule) : SectionDataRule {
+export function SectionDataRule(rule : UIRule) : SectionDataRule {
     return {
         type : SectionName.rule,
-        label : label,
         rule : rule
     };
 }
@@ -243,10 +273,11 @@ function termDP(binders : VarName[] = []) : P {
 
 const boundArgsDP : P = seqDP(boundVariableDP, repDP(optWhitespaceDP, boundVariableDP), optSpacesDP, dotDP);
 
-const templateDP : P = dependentSeqDP(optDP(boundArgsDP, spacesDP), 
+const templateDP : P = chainDP(optDP(boundArgsDP, spacesDP), 
     (lines : TextLines, state : ParseState, result : Result<SectionData, TokenType>) => {
         const boundVars = iterateContentTokens(result, t => t === TokenType.bound_variable);
         const varnames : VarName[] = [];
+        const uivars : UIVar[] = [];
         for (const b of boundVars) {
             const name = textOfToken(lines, b);
             if (varnames.indexOf(name) >= 0) {
@@ -254,9 +285,20 @@ const templateDP : P = dependentSeqDP(optDP(boundArgsDP, spacesDP),
                 state.theory.error(span, "Duplicate binder '" + name + "'.");
             } else {
                 varnames.push(name);
+                uivars.push(mkUIVar(lines, b));
             }
         }
-        return termDP(varnames);
+        return modifyResultDP(termDP(varnames), (lines : TextLines, term_result : DPResult<ParseState, SectionData, TokenType>) => {
+            if (term_result === undefined) internalError("Term parser should be designed to always succeed.");
+            if (term_result.result.kind === ResultKind.TREE && term_result.result.type?.type === SectionName.term) {
+                const term = term_result.result.type.term;
+                if (term !== undefined) {
+                    const template = mkUITemplate(uivars, term);
+                    return { state : term_result.state, result : joinResults([result, term_result.result], SectionDataTemplate(template)) };
+                }
+            }
+            return { state : term_result.state, result : joinResults([result, term_result.result], SectionDataTemplate()) };
+        });
     });
 
 function allOfDP(type : TokenType) : P {
@@ -651,13 +693,74 @@ const declarationBody = enumDP(definitionSection, syntaxSection, inlineLatexSect
 const declarationSection : S = { bullet : modifyResultDP(declarationDP, addDeclarationHead), 
     body: declarationBody, type: SectionDataNone(SectionName.declaration), process: processDeclaration};
 
+function readLabel(lines : TextLines, result : Result<SectionData, TokenType>) : SpanStr | undefined {
+    const labels = [...iterateContentTokens(result, t => t === TokenType.label)];
+    let label : SpanStr | undefined = undefined;
+    if (labels.length === 1) {
+        const span = absoluteSpan(lines, spanOfResult(labels[0]));
+        const text =  textOfToken(lines, labels[0]);
+        label = new SpanStr(span, text);
+    } 
+    return label;
+}
+function processPremise(lines : TextLines, result : R) : R {
+    if (result === undefined) return undefined;
+    const label = readLabel(lines, result.result);
+    const sections = [...iterateContentSections(result.result, s => s.type === SectionName.template)];
+    let template : UITemplate | undefined = undefined;
+    if (sections.length === 1) {
+        const section = sections[0];
+        template = (section.type as SectionDataTemplate).template;
+    }
+    result.result.type = SectionDataPremise(label, template);
+    return result;
+}
+function processConclusion(lines : TextLines, result : R) : R {
+    if (result === undefined) return undefined;
+    const label = readLabel(lines, result.result);
+    const sections = [...iterateContentSections(result.result, s => s.type === SectionName.term)];
+    let term : UITerm | undefined = undefined;
+    if (sections.length === 1) {
+        const section = sections[0];
+        term = (section.type as SectionDataTerm).term;
+    }
+    result.result.type = SectionDataConclusion(label, term);
+    return result;
+}
+const rulePremiseSection : S = { bullet : seqDP(tokenDP(literalL("premise"), TokenType.premise), optDP(spacesDP, labelDP)), body : templateDP, type : null, process: processPremise};
+const ruleInferSection : S = { bullet : optDP(seqDP(tokenDP(literalL("infer"), TokenType.infer), optDP(spacesDP, labelDP))), body : termDP(), type : null, process: processConclusion };
+const ruleDP : P = modifyResultDP(enumDP(rulePremiseSection, ruleInferSection), (lines, result) => {
+    if (result === undefined) return undefined;
+    const premisses = iterateContentSections(result.result, s => s.type === SectionName.premise);
+    const conclusions = iterateContentSections(result.result, s => s.type === SectionName.conclusion);
+    let ps : { label : SpanStr | undefined, premise : UITemplate }[] = [];
+    let cs : { label : SpanStr | undefined, conclusion : UITerm }[] = [];
+    for (const premise of premisses) {
+        const p = premise.type as SectionDataPremise;
+        if (p.premise) 
+            ps.push({label : p.label, premise : p.premise});
+    }
+    for (const conclusion of conclusions) {
+        const c = conclusion.type as SectionDataConclusion;
+        if (c.conclusion)
+            cs.push({label : c.label, conclusion : c.conclusion});
+    }
+    const rule = mkUIRule(ps, cs);
+    result.result.type = SectionDataRule(rule);
+    return result;
+});
 
-const rulePremiseSection : S = { bullet : seqDP(tokenDP(literalL("premise"), TokenType.premise), optDP(spacesDP, labelDP)), body : templateDP, type : SectionDataTerm(SectionName.term) };
-const ruleInferSection : S = { bullet : optDP(seqDP(tokenDP(literalL("infer"), TokenType.infer), optDP(spacesDP, labelDP))), body : termDP(), type : SectionDataTerm(SectionName.term) };
-const ruleDP : P = enumDP(rulePremiseSection, ruleInferSection); 
-
+function processAxiom(lines : TextLines, result : R) : R {
+    if (result === undefined) return undefined;
+    const label = readLabel(lines, result.result);
+    const rules = [...iterateContentSections(result.result, s => s.type === SectionName.rule)];
+    if (rules.length === 1) {
+        result.state.theory.addAxiom(label, (rules[0].type as SectionDataRule).rule);
+    }
+    return result;
+}
 const axiomDP : P = seqDP(keyword("axiom"), optDP(spacesDP, labelDP));
-const axiomSection : S = { bullet: axiomDP, body: ruleDP, type: SectionDataNone(SectionName.axiom) };
+const axiomSection : S = { bullet: axiomDP, body: ruleDP, type: SectionDataNone(SectionName.axiom), process: processAxiom };
 
 export const practaliumDP : P = enumDP(syntacticCategorySection, commentSection, theorySection, axiomSection, declarationSection, errorSection);
 

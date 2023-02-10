@@ -85,13 +85,13 @@ export function mkUITemplate(bounds : UIVar[], body : UITerm) : UITemplate {
 }
 
 export type UIRule = {
-    premisses : { label : SpanStr | undefined, template : UITemplate }[]
-    conclusions : { label : SpanStr | undefined, term : UITerm }[]
+    premisses : { label : SpanStr | undefined, premise : UITemplate }[]
+    conclusions : { label : SpanStr | undefined, conclusion : UITerm }[]
 }
 
 export function mkUIRule(
-    premisses : { label : SpanStr | undefined, template : UITemplate }[],
-    conclusions : { label : SpanStr | undefined, term : UITerm }[]) : UIRule 
+    premisses : { label : SpanStr | undefined, premise : UITemplate }[],
+    conclusions : { label : SpanStr | undefined, conclusion : UITerm }[]) : UIRule 
 {
     return {
         premisses : premisses,

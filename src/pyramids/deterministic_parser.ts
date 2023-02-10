@@ -65,6 +65,10 @@ export function endLineOf<S, T>(result : Result<S, T>) : number {
     }
 }
 
+export function startOf<S, T>(result : Result<S, T>) : [number, number] {
+    return [startLineOf(result), result.startOffsetInclusive];
+}
+
 export function endOf<S, T>(result : Result<S, T>) : [number, number] {
     const kind = result.kind;
     switch (kind) {
@@ -408,6 +412,52 @@ export function seqDP<State, S, T>(...parsers : DetParser<State, S, T>[]) : DetP
     return parse;
 }
 
+export function resultCoordinatesAreValid(startLine : number, startOffset : number, endLine : number, endOffset : number) : boolean {
+    if (!(nat.is(startLine) && nat.is(startOffset) && nat.is(endLine) && nat.is(endOffset))) return false;
+    if (startLine !== endLine) return startLine < endLine;
+    return startOffset <= endOffset;
+}
+
+export function joinResults<S, T>(results : Result<S, T>[], type : S | null | undefined = null, start? : [number, number], end? : [number, number]) : Tree<S, T> {
+    if (results.length === 0 && (start === undefined || end === undefined)) throw new Error("There must be at least one result if not both start and end positions are provided.");
+    let startLine : number 
+    let startOffset : number
+    let endLine : number
+    let endOffset : number
+    if (start === undefined) {
+        [startLine, startOffset] = startOf(results[0]);
+    } else {
+        [startLine, startOffset] = [start[0], start[1]];
+    }
+    if (end === undefined) {
+        [endLine, endOffset] = endOf(results[results.length-1]);
+    } else {
+        [endLine, endOffset] = [end[0], end[1]];
+    }
+    let line = startLine;
+    let offset = startOffset;
+    let children : Result<S, T>[] = [];
+    for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        if (!isUndefinedTree(r)) {
+            children.push(r);
+        }
+        if (!resultCoordinatesAreValid(line, offset, startLineOf(r), r.startOffsetInclusive)) throw new Error("Invalid relative arrangement of results encountered.");
+        [line, offset] = endOf(r);
+    }
+    if (!resultCoordinatesAreValid(line, offset, endLine, endOffset)) throw new Error("Invalid relative arrangement of results encountered.");
+    const tree : Tree<S, T> = {
+        kind : ResultKind.TREE,
+        type : type,
+        startLine : startLine,
+        startOffsetInclusive : startOffset,
+        endLine : endLine,
+        endOffsetExclusive : endOffset,
+        children : children
+    };  
+    return tree;
+}
+
 export function dependentSeqDP<State, S, T>(
     parser1 : DetParser<State, S, T>, 
     parser2 : (lines : TextLines, state : State, result : Result<S, T>) => DetParser<State, S, T> | undefined) : DetParser<State, S, T> 
@@ -420,20 +470,24 @@ export function dependentSeqDP<State, S, T>(
         const [end_line1, end_offset1] = endOf(parsed1.result);
         const parsed2 = p2(parsed1.state, lines, end_line1, end_offset1);
         if (parsed2 === undefined) return undefined;
-        const [end_line, end_offset] = endOf(parsed2.result);
-        const children : Result<S, T>[] = [];
-        if (!isUndefinedTree(parsed1.result)) children.push(parsed1.result);
-        if (!isUndefinedTree(parsed2.result)) children.push(parsed2.result);
-        const tree : Tree<S, T> = {
-            kind : ResultKind.TREE,
-            type : null,
-            startLine : line,
-            startOffsetInclusive : offset,
-            endLine : end_line,
-            endOffsetExclusive : end_offset,
-            children : children
-        };       
-        return { state : parsed2.state, result: tree };
+        const result = joinResults([parsed1.result, parsed2.result], null, [line, offset]);
+        return { state : parsed2.state, result: result };
+    }
+
+    return parse;
+}
+
+export function chainDP<State, S, T>(
+    parser1 : DetParser<State, S, T>, 
+    parser2 : (lines : TextLines, state : State, result : Result<S, T>) => DetParser<State, S, T> | undefined) : DetParser<State, S, T> 
+{
+    function parse(state : State, lines : TextLines, line : number, offset : number) : DPResult<State, S, T> {
+        const parsed1 = parser1(state, lines, line, offset);
+        if (parsed1 === undefined) return undefined;
+        const p2 = parser2(lines, parsed1.state, parsed1.result);
+        if (p2 === undefined) return undefined;
+        const [end_line1, end_offset1] = endOf(parsed1.result);
+        return p2(parsed1.state, lines, end_line1, end_offset1);
     }
 
     return parse;
