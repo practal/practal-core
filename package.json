@@ -21,7 +21,8 @@
   "keywords": ["theorem proving", "functional programming", "logic", "algebra", "mathematics"],
   "scripts": {
     "test": "tsc && node ./out/test.js",
-    "insta": "tsc && node ./out/things/test.js"
+    "insta": "tsc && node ./out/things/test.js",
+    "vscolors": "tsc && node ./out/vscolors.js"
   },
   "contributes": {
     "languages": [{
@@ -30,53 +31,87 @@
       "extensions": [".practal"],
       "configuration": "./language-configuration.json"
     }], 
+    "colors": [
+      {
+        "id": "practal.abstraction",
+        "description": "Color for error message in the status bar.",
+        "defaults": {
+          "dark": "#FF0000",
+          "light": "#FF0000",
+          "highContrast": "#FF0000",
+          "highContrastLght": "#FF0000"
+        }
+      }
+    ],    
     "semanticTokenScopes": [
       {
         "scopes": {
-          "practal-module-name": ["entity.name"],
-          "practal-abstraction": ["entity.name.function"],
-          "practal-abstraction-declaration": ["entity.name.function"],
-          "practal-identifier": ["entity.name"],
-          "practal-syntactic-category": ["constant.language"], 
-          "practal-syntactic-category-declaration": ["constant.language"], 
-          "practal-syntactic-category-keyword": ["keyword.control"], 
-          "practal-syntactic-comparator": ["keyword.operator"], 
-          "practal-invalid": ["invalid.illegal"],
-          "practal-primary-keyword": ["keyword.control"],
-          "practal-secondary-keyword": ["keyword.control"],
-          "practal-free-variable": ["variable.other"],
-          "practal-bound-variable": ["variable.parameter"],
-          "practal-custom-syntax": ["keyword.operator"],
-          "practal-variable": ["variable.other"],          
-          "practal-comment" : ["comment.block"],          
-          "practal-label" : ["entity.name"],
-          "practal-square-braces" : ["keyword.control"],
-          "practal-round-braces" : ["keyword.operator"],
-          "practal-punctuation" : ["keyword.control"],
-          "practal-syntax" : ["keyword.operator"],
-          "practal-syntax-fragment" : ["keyword.operator"],
-          "practal-syntax-optional-space" : ["keyword.operator"],
-          "practal-syntax-mandatory-space" : ["entity.name.type"],
-          "practal-latex-syntax" : ["string"],
-          "practal-latex-space" : ["string"],
-          "practal-latex-control-sequence" : ["string"]
         }
       }
     ],    
     "configurationDefaults": {
+
       "editor.semanticTokenColorCustomizations": {
-        "rules": {
-            "practal-primary-keyword": {"bold": true },
-            "practal-round-braces": "#969896",
-            "practal-free-variable": { "bold" : false, "italic": false },
-            "practal-bound-variable": { "bold": false, "italic": true, "foreground": "#63D6C6" },
-            "practal-syntactic-category": { "italic": true },
-            "practal-syntactic-category-keyword": { "italic": true },   
-            "practal-syntax-mandatory-space": { "underline": true },
-            "practal-latex-control-sequence" : { "italic": true },
-            "practal-abstraction-declaration": { "underline": true },       
-            "practal-syntactic-category-declaration": { "underline": true, "italic": true }
+        "[*Light*]" : {
+          "rules": {
+            "practal-module-name": {"foreground": "#073642"},
+            "practal-abstraction" : {"foreground": "#b58900"},          
+            "practal-abstraction-declaration": {"foreground": "#b58900", "underline": true},
+            "practal-identifier": {"foreground": "#586e75"},
+            "practal-syntactic-category": {"foreground": "#2aa198", "italic": true}, 
+            "practal-syntactic-category-declaration": { "foreground": "#2aa198", "underline": true, "italic": true }, 
+            "practal-syntactic-category-keyword": {"foreground": "#6c71c4", "italic": true, "bold": true}, 
+            "practal-syntactic-comparator": {"foreground": "#d33682"}, 
+            "practal-invalid": {"foreground": "#dc322f"},
+            "practal-primary-keyword": {"foreground": "#d33682", "bold": true},
+            "practal-secondary-keyword": {"foreground": "#6c71c4", "bold": true},
+            "practal-free-variable": {"foreground": "#268bd2"},
+            "practal-bound-variable": { "italic": true, "foreground": "#859900"},
+            "practal-custom-syntax": {"foreground": "#586e75"},
+            "practal-variable": {"foreground": "#586e75"},          
+            "practal-comment" : {"foreground": "#839496"},          
+            "practal-label" : {"foreground": "#657b83"},
+            "practal-square-braces" : {"foreground":"#586e75"},
+            "practal-punctuation" : {"foreground":"#586e75"},
+            "practal-syntax-fragment" : {"foreground":"#586e75"},
+            "practal-syntax-optional-space" : {"foreground": "#657b83", "underline": true},
+            "practal-syntax-mandatory-space" : {"underline": true, "foreground":"#d33682"},
+            "practal-latex-syntax" : {"foreground":"#586e75"},
+            "practal-latex-space" : {},
+            "practal-latex-control-sequence" : { "italic": true, "foreground" : "#6c71c4"},
+            "practal-round-braces": {"foreground": "#93a1a1"}
+          }        
+        },        
+        "[*Dark*]" : {
+          "rules": {
+            "practal-module-name": {"foreground": "#eee8d5"},
+            "practal-abstraction" : {"foreground": "#b58900"},          
+            "practal-abstraction-declaration": {"foreground": "#b58900", "underline": true},
+            "practal-identifier": {"foreground": "#93a1a1"},
+            "practal-syntactic-category": {"foreground": "#2aa198", "italic": true}, 
+            "practal-syntactic-category-declaration": { "foreground": "#2aa198", "underline": true, "italic": true }, 
+            "practal-syntactic-category-keyword": {"foreground": "#6c71c4", "italic": true, "bold": true}, 
+            "practal-syntactic-comparator": {"foreground": "#d33682"}, 
+            "practal-invalid": {"foreground": "#dc322f"},
+            "practal-primary-keyword": {"foreground": "#d33682", "bold": true},
+            "practal-secondary-keyword": {"foreground": "#6c71c4", "bold": true},
+            "practal-free-variable": {"foreground": "#268bd2"},
+            "practal-bound-variable": { "italic": true, "foreground": "#859900"},
+            "practal-custom-syntax": {"foreground": "#93a1a1"},
+            "practal-variable": {"foreground": "#93a1a1"},          
+            "practal-comment" : {"foreground": "#657b83"},          
+            "practal-label" : {"foreground": "#839496"},
+            "practal-square-braces" : {"foreground":"#93a1a1"},
+            "practal-punctuation" : {"foreground":"#93a1a1"},
+            "practal-syntax-fragment" : {"foreground":"#93a1a1"},
+            "practal-syntax-optional-space" : {"foreground": "#839496", "underline": true},
+            "practal-syntax-mandatory-space" : {"underline": true, "foreground":"#d33682"},
+            "practal-latex-syntax" : {"foreground":"#93a1a1"},
+            "practal-latex-space" : {},
+            "practal-latex-control-sequence" : { "italic": true, "foreground" : "#6c71c4"},
+            "practal-round-braces": {"foreground": "#586e75"}          
           }
+        }
       },      
       "[practal]": {
         "editor.occurrencesHighlight": false,        
