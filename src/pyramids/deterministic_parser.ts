@@ -408,6 +408,38 @@ export function seqDP<State, S, T>(...parsers : DetParser<State, S, T>[]) : DetP
     return parse;
 }
 
+export function dependentSeqDP<State, S, T>(
+    parser1 : DetParser<State, S, T>, 
+    parser2 : (lines : TextLines, state : State, result : Result<S, T>) => DetParser<State, S, T> | undefined) : DetParser<State, S, T> 
+{
+    function parse(state : State, lines : TextLines, line : number, offset : number) : DPResult<State, S, T> {
+        const parsed1 = parser1(state, lines, line, offset);
+        if (parsed1 === undefined) return undefined;
+        const p2 = parser2(lines, parsed1.state, parsed1.result);
+        if (p2 === undefined) return undefined;
+        const [end_line1, end_offset1] = endOf(parsed1.result);
+        const parsed2 = p2(parsed1.state, lines, end_line1, end_offset1);
+        if (parsed2 === undefined) return undefined;
+        const [end_line, end_offset] = endOf(parsed2.result);
+        const children : Result<S, T>[] = [];
+        if (!isUndefinedTree(parsed1.result)) children.push(parsed1.result);
+        if (!isUndefinedTree(parsed2.result)) children.push(parsed2.result);
+        const tree : Tree<S, T> = {
+            kind : ResultKind.TREE,
+            type : null,
+            startLine : line,
+            startOffsetInclusive : offset,
+            endLine : end_line,
+            endOffsetExclusive : end_offset,
+            children : children
+        };       
+        return { state : parsed2.state, result: tree };
+    }
+
+    return parse;
+}
+
+
 export function orDP<State, S, T>(...parsers : DetParser<State, S, T>[]) : DetParser<State, S, T> {
 
     function parse(state : State, lines : TextLines, line : number, offset : number) : DPResult<State, S, T> {

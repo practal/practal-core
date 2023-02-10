@@ -1,6 +1,6 @@
 import { printPractalResult, SectionData, SectionDataTerm, SectionName, TokenType } from "./practalium_parser"
 import { iterateContentSections, iterateContentTokens, iterateTokensDeep, printResult, Result, ResultKind, textOfToken, Token, Tree } from "./pyramids/deterministic_parser"
-import { Span, spanOfResult } from "./pyramids/span"
+import { Span, spanOfResult, SpanStr } from "./pyramids/span"
 import { absoluteSpan, TextLines } from "./pyramids/textlines"
 import { Handle, Theory } from "./theory"
 import { debug } from "./things/debug"
@@ -70,6 +70,33 @@ export type UITermAbstrApp = {
     params : UITerm[],
     syntax? : Tree<SectionData, TokenType>,
     freeVars? : UIFreeVars
+}
+
+export type UITemplate = {
+    bounds : UIVar[],
+    body : UITerm
+}
+
+export function mkUITemplate(bounds : UIVar[], body : UITerm) : UITemplate {
+    return {
+        bounds : bounds,
+        body : body
+    };
+}
+
+export type UIRule = {
+    premisses : { label : SpanStr | undefined, template : UITemplate }[]
+    conclusions : { label : SpanStr | undefined, term : UITerm }[]
+}
+
+export function mkUIRule(
+    premisses : { label : SpanStr | undefined, template : UITemplate }[],
+    conclusions : { label : SpanStr | undefined, term : UITerm }[]) : UIRule 
+{
+    return {
+        premisses : premisses,
+        conclusions : conclusions
+    };
 }
 
 export function mkUITermValue(abstr : Handle, syntax? : Tree<SectionData, TokenType>) : UITermAbstrApp {
@@ -293,10 +320,10 @@ function makeBound(v : UIVar) {
  * Returns undefined if the term could not be validated, otherwise the set of free variables. 
  * Changes the term by making variables free/bound, as discovered.
  **/
-export function validateUITerm(theory : Theory, lines : TextLines, term : UITerm) : UIFreeVars | undefined {
+export function validateUITerm(theory : Theory, lines : TextLines, term : UITerm, already_bound : VarName[] = []) : UIFreeVars | undefined {
 
     const freeVars : UIFreeVars = new UIFreeVars();
-    const binders : VarName[] = [];
+    const binders : VarName[] = [...already_bound];
 
     function isBound(v : VarName, binders : VarName[]) : boolean {
         return binders.indexOf(v) >= 0;

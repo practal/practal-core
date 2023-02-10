@@ -488,7 +488,7 @@ export class Theory {
         const bounds = head.bounds;
         for (let i = 0; i < bounds.length; i++) {
             if (binders.has(bounds[i].str)) {
-                this.error(bounds[i].span, "Duplicate binder variable '" + bounds[i] + "'.");
+                this.error(bounds[i].span, "Duplicate binder '" + bounds[i] + "'.");
                 return undefined;
             }
             binders.set(bounds[i].str, binders.size);
