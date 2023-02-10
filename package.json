@@ -31,18 +31,6 @@
       "extensions": [".practal"],
       "configuration": "./language-configuration.json"
     }], 
-    "colors": [
-      {
-        "id": "practal.abstraction",
-        "description": "Color for error message in the status bar.",
-        "defaults": {
-          "dark": "#FF0000",
-          "light": "#FF0000",
-          "highContrast": "#FF0000",
-          "highContrastLght": "#FF0000"
-        }
-      }
-    ],    
     "semanticTokenScopes": [
       {
         "scopes": {
