@@ -15,7 +15,7 @@ You can describe an Abstraction Logic theory in a `.practal` file by:
 
 See [Practal.com](https://practal.com) and in particular [A First Look at Practal](https://practal.com/press/aflap.1) for more information!
 
-<img src="Foundation.gif" alt="Foundation.practal" width="436" style="border-radius:20px"/>
+<img src="Foundation.gif" alt="Foundation.practal" width="403" style="border-radius:20px"/>
 
 ## Known Issues
 
