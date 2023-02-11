@@ -413,6 +413,10 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
     let loose = false;
     for (const token of iterateTokensFlat(result.result)) {
         if (token.type === TokenType.syntactic_category_atomic || token.type === TokenType.syntactic_category_term) {
+            if (loose) {
+                const span = spanOfResult(token);
+                theory.error(absoluteSpan(lines, span), "Cannot be declared loose.");
+            }
             const handle2 = token.type === TokenType.syntactic_category_atomic ? theory.SC_ATOMIC : theory.SC_TERM;
             if (handle1 !== undefined) {  
                 if (handle1IsHigher) {
@@ -540,8 +544,8 @@ function addDeclarationHead(lines : TextLines, result : R) : R {
     return result;
 }
 
-const syntacticCategoryAtomicDP : P = tokenDP(seqL(literalL("''atomic"), optL(literalL("'"))), TokenType.syntactic_category_atomic); 
-const syntacticCategoryTermDP : P = tokenDP(seqL(literalL("''term"), optL(literalL("'"))), TokenType.syntactic_category_term); 
+const syntacticCategoryAtomicDP : P = tokenDP(literalL("Atomic"), TokenType.syntactic_category_atomic); 
+const syntacticCategoryTermDP : P = tokenDP(literalL("Term"), TokenType.syntactic_category_term); 
 const looseDP : P = tokenDP(literalL("loose"), TokenType.loose);
 const syntacticCategoryDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category); 
 const syntacticCategoryKeywordDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category_keyword); 

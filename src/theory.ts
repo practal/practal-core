@@ -407,8 +407,6 @@ export class Theory {
     }
 
     lookupSyntacticCategory(name : string) : Handle | undefined {
-        if (name === "'atomic") return this.SC_ATOMIC;
-        if (name === "'term") return this.SC_TERM;
         const handle = this.#scNormals.get(normalConstId(name));
         if (handle === undefined) return undefined;
         if (this.#syntacticCategories[handle].decl.matches(name)) return handle;
