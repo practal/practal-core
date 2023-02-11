@@ -10,6 +10,8 @@ theory Foundation
 \imp(lies) A B 
     ` #A  ⇒  #B`quant
     ` #A  =>  #B`quant
+    `` #A  ⟹  #B`quant
+    `` #A  ==>  #B`quant
 
 `lit > `implies > `form
 

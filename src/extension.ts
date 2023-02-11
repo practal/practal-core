@@ -66,7 +66,8 @@ function diagnose(theory : Theory, lines : TextLines, diagnoses : Diagnosis[], r
         switch (kind) {
             case ResultKind.TOKEN: 
                 if (result.type === TokenType.syntactic_category_keyword || result.type === TokenType.syntactic_category) {
-                    const text = textOfToken(lines, result).slice(1);
+                    let text = textOfToken(lines, result);
+                    while (text.length > 0 && text.charAt(0) === "`") text = text.slice(1);
                     if (text !== "" && !(text.indexOf("(") >= 0) && theory.lookupSyntacticCategory(text) === undefined) {
                         diagnoses.push(new Diagnosis(spanOfResult(result), Severity.ERROR, "Unknown syntactic category: " + text));    
                     }            
@@ -131,7 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
     const output = vscode.window.createOutputChannel("Practal");
     configureDebugging((s : string) => output.appendLine(s));
     registerLanguageTokenizer("practal", tokenizer, ALL_TOKEN_TYPES, semantics);
-    debug("Practal for VSCode v0.0.9");
+    debug("Practal for VSCode v0.0.10");
     debug("©︎ 2023 Steven Obua (trading as Recursive Mind)");
     debug("Check https://practal.com for information and updates."); 
     debug("--------------------------------------------------------------------");

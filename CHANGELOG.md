@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.10] - 2023-02-12
+
+### Added
+- Long form syntax specs. These are started by two back ticks instead of a single one, and mark a syntax spec as long form. 
+  In later versions, tools like the pretty printer may choose automatically between long form and short form syntax based on the context.
+
+### Changed
+
+- Renamed predefined syntactic categories ''atomic and ''term to Atomic and Term, respectively.
+- Syntactic categories are prefixed with a back tick instead of an apostrophe.
+
+
 ## [0.0.9] - 2023-02-11
 
 ### Added

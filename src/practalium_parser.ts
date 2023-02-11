@@ -396,12 +396,13 @@ function varParserDP(head : Head) : P {
 
 function readSyntacticCategory(lines : TextLines, token : Token<TokenType>) : SpanStr | undefined {
     if (token.type !== TokenType.syntactic_category) return undefined;
-    return readTokenAsName(lines, token);
+    return readTokenAsName(lines, token).str;
 }
 
-function readSyntacticCategoryKeyword(lines : TextLines, token : Token<TokenType>) : SpanStr | undefined {
+function readSyntacticCategoryKeyword(lines : TextLines, token : Token<TokenType>) : { str : SpanStr, long : boolean } | undefined {
     if (token.type !== TokenType.syntactic_category_keyword) return undefined;
-    return readTokenAsName(lines, token);
+    const n = readTokenAsName(lines, token);
+    return { str : n.str, long : n.stripped.length > 1 };
 }
 
 function addSyntacticConstraint(lines : TextLines, result : R) : R {
@@ -471,11 +472,15 @@ function isntNameChar(c : string) : boolean {
     return c === "#" || c === "?" || c === tick || c === "\\";
 }
 
-function readTokenAsName<T>(lines : TextLines, token : Token<T>) : SpanStr {
+function readTokenAsName<T>(lines : TextLines, token : Token<T>) : { str : SpanStr, stripped : string } {
     let text = textOfToken(lines, token);
-    if (text.length > 0 && isntNameChar(text.charAt(0))) text = text.slice(1);
+    let stripped = "";
+    while (text.length > 0 && isntNameChar(text.charAt(0))) {
+        stripped += text.charAt(0);
+        text = text.slice(1);
+    }
     if (text.endsWith(tick)) text = text.slice(0, text.length - 1);
-    return new SpanStr(spanOfResult(token), text);
+    return { str: new SpanStr(spanOfResult(token), text), stripped : stripped };
 }
 
 function readDeclarationHead(lines : TextLines, result : Result<SectionData, TokenType>) : Head | undefined {
@@ -489,7 +494,7 @@ function readDeclarationHead(lines : TextLines, result : Result<SectionData, Tok
     }
     function readName(i : int) : SpanStr | undefined {
         if (i < 0 || i >= count) return undefined;
-        const s = readTokenAsName(lines, tokens[i]);
+        const s = readTokenAsName(lines, tokens[i]).str;
         if (s === undefined || s.str.length === 0) return undefined;
         return s;
     }
@@ -548,7 +553,7 @@ const syntacticCategoryAtomicDP : P = tokenDP(literalL("Atomic"), TokenType.synt
 const syntacticCategoryTermDP : P = tokenDP(literalL("Term"), TokenType.syntactic_category_term); 
 const looseDP : P = tokenDP(literalL("loose"), TokenType.loose);
 const syntacticCategoryDP : P = tokenDP(seqL(literalL(tick), identifierL, optL(literalL(tick))), TokenType.syntactic_category); 
-const syntacticCategoryKeywordDP : P = tokenDP(seqL(literalL(tick), identifierL, optL(literalL(tick))), TokenType.syntactic_category_keyword); 
+const syntacticCategoryKeywordDP : P = tokenDP(seqL(firstL(literalL(tick + tick), literalL(tick)), identifierL, optL(literalL(tick))), TokenType.syntactic_category_keyword); 
 const syntacticCategoryDeclDP : P = seqDP(optDP(looseDP, optSpacesDP), orDP(syntacticCategoryAtomicDP, syntacticCategoryTermDP, tokenDP(seqL(literalL(tick), idDeclL), TokenType.syntactic_category))); 
 const syntacticCategoryTransitiveGreaterDP : P = tokenDP(literalL(">"), TokenType.syntactic_transitive_greater);
 const syntacticCategoryTransitiveLessDP : P = tokenDP(literalL("<"), TokenType.syntactic_transitive_less);
@@ -559,7 +564,7 @@ const syntacticCategoryConstraintDP : P = seqDP(syntacticCategoryDeclDP, repDP(o
 const syntacticCategorySection : S = { bullet : modifyResultDP(syntacticCategoryConstraintDP, addSyntacticConstraint), body : totalOfDP(emptyDP()), type : SectionDataNone(SectionName.syntactic_category) };
 
 const syntacticSuffixDP : P = orDP(syntacticCategoryDP, tokenDP(literalL(tick), TokenType.syntactic_category));
-const syntacticSuffixKeywordDP : P = orDP(syntacticCategoryKeywordDP, tokenDP(literalL(tick), TokenType.syntactic_category_keyword));
+const syntacticSuffixKeywordDP : P = orDP(syntacticCategoryKeywordDP, tokenDP(firstL(literalL(tick + tick), literalL(tick)), TokenType.syntactic_category_keyword));
 const fragment_nonhashDP : P = tokenDP(charsL(c => c !== " " && c !== "#"), TokenType.syntax_fragment);
 function nontrailing_spaces(minimum : number) : Lexer {
     return seqL(charsL(c => c === " ", minimum), lookaheadL(anyCharL));
@@ -599,12 +604,13 @@ function isSyntacticCategory(t : TokenType) : boolean {
 }
 
 function usesBuiltInCategory(lines : TextLines, results : Result<SectionData, TokenType>[]) : boolean {
-    const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>));
+    const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>)).str;
     return category.str === "";
 }
 
 function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenType>[]) : SyntaxSpec | undefined {
     const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>));
+    debug("syntax spec, category = '" + category.str + "', long = " + category.long);
     let fragments : SyntaxFragment[] = [];
     let i = 1;
     while (i < results.length) {
@@ -624,10 +630,10 @@ function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenTy
                 fragments.push({ kind: SyntaxFragmentKind.mandatory_whitespace });
                 break;
             case TokenType.free_variable: {
-                const s = force(readTokenAsName(lines, results[i] as Token<TokenType>));
+                const s = force(readTokenAsName(lines, results[i] as Token<TokenType>).str);
                 i += 1;
                 if (i < results.length && results[i].kind === ResultKind.TOKEN && isSyntacticCategory(results[i].type as TokenType)) {
-                    const sc = force(readTokenAsName(lines, results[i] as Token<TokenType>));
+                    const sc = force(readTokenAsName(lines, results[i] as Token<TokenType>).str);
                     fragments.push({ kind: SyntaxFragmentKind.free_variable, name: s, syntactic_category: sc });
                     i += 1;
                 } else {
@@ -636,7 +642,7 @@ function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenTy
                 break;
             }
             case TokenType.bound_variable: {
-                const s = force(readTokenAsName(lines, results[i] as Token<TokenType>));
+                const s = force(readTokenAsName(lines, results[i] as Token<TokenType>).str);
                 fragments.push({ kind: SyntaxFragmentKind.bound_variable, name: s });                
                 i += 1;
                 break;
@@ -655,7 +661,7 @@ function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenTy
 
         }
     }
-    return new SyntaxSpec(category, fragments);
+    return new SyntaxSpec(category.str, category.long, fragments);
 }
 
 function processDeclaration(lines : TextLines, result : R) : R {

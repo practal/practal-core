@@ -202,15 +202,17 @@ function consolidateFragmentSpaces(fragments : SyntaxFragment[]) : SyntaxFragmen
 
 export class SyntaxSpec {
     syntactic_category : SpanStr
+    long : boolean
     fragments : SyntaxFragment[]
-    constructor(category : SpanStr, fragments : SyntaxFragment[]) {
+    constructor(category : SpanStr, long : boolean, fragments : SyntaxFragment[]) {
         this.syntactic_category = category;
+        this.long = long;
         this.fragments = consolidateFragmentSpaces(fragments);
         freeze(this.fragments);
         freeze(this);
     }
     toString() : string {
-        let s = "'" + this.syntactic_category;
+        let s = "`" + this.syntactic_category;
         for (const fragment of this.fragments) {
             s += " ";
             const kind = fragment.kind;
