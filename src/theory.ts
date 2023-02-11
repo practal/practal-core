@@ -81,14 +81,14 @@ export class NameDecl {
 
     private static mkSCAtomic() : NameDecl {
         NameDecl.#internal = true;
-        const decl =  new NameDecl(Span.none, "'a(tomic)", "'a", "'atomic");
+        const decl =  new NameDecl(Span.none, "", "", "");
         NameDecl.#internal = false;
         return decl;
     }
 
     private static mkSCTerm() : NameDecl {
         NameDecl.#internal = true;
-        const decl = new NameDecl(Span.none, "'t(erm)", "'t", "'term");
+        const decl = new NameDecl(Span.none, "", "", "");
         NameDecl.#internal = false;
         return decl;
     }

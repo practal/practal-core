@@ -1,12 +1,12 @@
 theory PostScriptum
 
-\plus x y ' #x' + #y
+\plus x y ` #x` + #y
 
-\eq x y ' #x'plus == #y'plus
+\eq x y ` #x`plus == #y`plus
 
-\and A B ' #A ∧ #B'
+\and A B ` #A ∧ #B`
 
-'eq > 'and
+`eq > `and
 
 axiom x == x ∧ x + y == y + x ∧ x + y + z == x + (y + z)
 

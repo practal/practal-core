@@ -2,6 +2,8 @@ import { charL, firstL, hyphenL, Lexer, literalL, optL, rep1L, repL, seqL } from
 import { Span } from "./pyramids/span";
 import { internalError } from "./things/utils";
 
+export const tick : string = "`";
+
 export function splitIdDecl(decl : string) : { short : string, long : string } | undefined {
     let short = "";
     let long = "";
@@ -71,7 +73,7 @@ export function idMatcher(id : string) : Lexer {
         if (isConstIdLetter(c)) {
             const lower = c.toLowerCase();
             lexers.push(charL(d => d.toLowerCase() === lower));
-        } else if (isDigit(c) || c == "'") {
+        } else if (isDigit(c)) {
             lexers.push(literalL(c));
         } else if (c === "-") {
             lexers.push(optHyphenL);

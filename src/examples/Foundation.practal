@@ -1,21 +1,21 @@
 theory Foundation
 
-'quant(ifier) < 'form(ula) < 'lit(eral)
-'val(ue)
+`quant(ifier) < `form(ula) < `lit(eral)
+`val(ue)
 
 \true 
-    ' 𝖳
-    ' ⊤
+    ` 𝖳
+    ` ⊤
 
 \imp(lies) A B 
-    ' #A  ⇒  #B'quant
-    ' #A  =>  #B'quant
+    ` #A  ⇒  #B`quant
+    ` #A  =>  #B`quant
 
-'lit > 'implies > 'form
+`lit > `implies > `form
 
-\(for-)all x. P[x] 'quant ∀ #x .  #P'
+\(for-)all x. P[x] `quant ∀ #x .  #P`
 
-\eq(uals) A B 'lit #A'val  =  #B'val
+\eq(uals) A B `lit #A`val  =  #B`val
 
 axiom Modus-ponens: B
     premise conditional: A ⇒ B
@@ -34,14 +34,14 @@ axiom Equality-1: x = x
 axiom Equality-2: x = y ⇒ A[x] ⇒ A[y]
 
 \false = ∀ x. x
-    ' 𝖥
+    ` 𝖥
 
 \not A = A ⇒ 𝖥 
-    'lit ¬ #A'
+    `lit ¬ #A`
 
 \n(ot-)eq(uals) A B =  ¬ A = B
-    'lit #A'val  ≠  #B'val
-    'lit #A'val  !=  #B'val
+    `lit #A`val  ≠  #B`val
+    `lit #A`val  !=  #B`val
 
 
 

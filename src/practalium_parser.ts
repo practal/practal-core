@@ -468,13 +468,13 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
 }
 
 function isntNameChar(c : string) : boolean {
-    return c === "#" || c === "?" || c === "'" || c === "\\";
+    return c === "#" || c === "?" || c === tick || c === "\\";
 }
 
 function readTokenAsName<T>(lines : TextLines, token : Token<T>) : SpanStr {
     let text = textOfToken(lines, token);
     if (text.length > 0 && isntNameChar(text.charAt(0))) text = text.slice(1);
-    if (text.endsWith("'")) text = text.slice(0, text.length - 1);
+    if (text.endsWith(tick)) text = text.slice(0, text.length - 1);
     return new SpanStr(spanOfResult(token), text);
 }
 
@@ -543,13 +543,13 @@ function addDeclarationHead(lines : TextLines, result : R) : R {
     result.state.theory.startDeclaration(head);
     return result;
 }
-
+const tick = "`";
 const syntacticCategoryAtomicDP : P = tokenDP(literalL("Atomic"), TokenType.syntactic_category_atomic); 
 const syntacticCategoryTermDP : P = tokenDP(literalL("Term"), TokenType.syntactic_category_term); 
 const looseDP : P = tokenDP(literalL("loose"), TokenType.loose);
-const syntacticCategoryDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category); 
-const syntacticCategoryKeywordDP : P = tokenDP(seqL(literalL("'"), identifierL, optL(literalL("'"))), TokenType.syntactic_category_keyword); 
-const syntacticCategoryDeclDP : P = seqDP(optDP(looseDP, optSpacesDP), orDP(syntacticCategoryAtomicDP, syntacticCategoryTermDP, tokenDP(seqL(literalL("'"), idDeclL), TokenType.syntactic_category))); 
+const syntacticCategoryDP : P = tokenDP(seqL(literalL(tick), identifierL, optL(literalL(tick))), TokenType.syntactic_category); 
+const syntacticCategoryKeywordDP : P = tokenDP(seqL(literalL(tick), identifierL, optL(literalL(tick))), TokenType.syntactic_category_keyword); 
+const syntacticCategoryDeclDP : P = seqDP(optDP(looseDP, optSpacesDP), orDP(syntacticCategoryAtomicDP, syntacticCategoryTermDP, tokenDP(seqL(literalL(tick), idDeclL), TokenType.syntactic_category))); 
 const syntacticCategoryTransitiveGreaterDP : P = tokenDP(literalL(">"), TokenType.syntactic_transitive_greater);
 const syntacticCategoryTransitiveLessDP : P = tokenDP(literalL("<"), TokenType.syntactic_transitive_less);
 const syntacticCategoryComparatorDP : P = orDP(
@@ -558,8 +558,8 @@ const syntacticCategoryComparatorDP : P = orDP(
 const syntacticCategoryConstraintDP : P = seqDP(syntacticCategoryDeclDP, repDP(optWhitespaceDP, syntacticCategoryComparatorDP, optWhitespaceDP, syntacticCategoryDeclDP));
 const syntacticCategorySection : S = { bullet : modifyResultDP(syntacticCategoryConstraintDP, addSyntacticConstraint), body : totalOfDP(emptyDP()), type : SectionDataNone(SectionName.syntactic_category) };
 
-const syntacticSuffixDP : P = orDP(syntacticCategoryDP, tokenDP(literalL("'"), TokenType.syntactic_category));
-const syntacticSuffixKeywordDP : P = orDP(syntacticCategoryKeywordDP, tokenDP(literalL("'"), TokenType.syntactic_category_keyword));
+const syntacticSuffixDP : P = orDP(syntacticCategoryDP, tokenDP(literalL(tick), TokenType.syntactic_category));
+const syntacticSuffixKeywordDP : P = orDP(syntacticCategoryKeywordDP, tokenDP(literalL(tick), TokenType.syntactic_category_keyword));
 const fragment_nonhashDP : P = tokenDP(charsL(c => c !== " " && c !== "#"), TokenType.syntax_fragment);
 function nontrailing_spaces(minimum : number) : Lexer {
     return seqL(charsL(c => c === " ", minimum), lookaheadL(anyCharL));
