@@ -1,5 +1,7 @@
 # Practal for VSCode
 
+Practal has its first monthly sponsor, many thanks to [purebounce](https://github.com/purebounce)! 🎉
+
 ## Installation
 
 Practal is available as a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=Practal.practal).
