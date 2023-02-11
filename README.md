@@ -1,8 +1,8 @@
-# Practal Core
+# Practal for VSCode
 
 ## Installation
 
-Practal Core is available as a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=Practal.practal).
+Practal is available as a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=Practal.practal).
 Make sure you also have the [STIX fonts](https://www.stixfonts.org) installed on your system.
 
 ## Features
@@ -11,7 +11,7 @@ You can describe an Abstraction Logic theory in a `.practal` file by:
 
 * Declaring abstractions, and optionally defining them.
 * Introducing axioms.
-* Providing custom syntax for your abstractions. Practal Core contains under the hood a full engine for deterministic LR parsing. It is actually quite a lot of fun to play around with your own syntax!
+* Providing custom syntax for your abstractions. Practal contains under the hood a full engine for deterministic LR parsing. It is actually quite a lot of fun to play around with your own syntax!
 
 See [Practal.com](https://practal.com) and in particular [A First Look at Practal](https://practal.com/press/aflap.1) for more information!
 
@@ -19,7 +19,7 @@ See [Practal.com](https://practal.com) and in particular [A First Look at Practa
 
 ## Known Issues
 
-This is a very early version, not even alpha. 
+This is a pre-α release. 
 
 * No proofs, or really any other features except the ones stated above.
 * Works only on a single file, there is no possibility to import or include other theories. 

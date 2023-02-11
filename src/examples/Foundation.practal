@@ -1,12 +1,11 @@
 theory Foundation
 
 'quant(ifier) < 'form(ula) < 'lit(eral)
-'bool(ean) > 'val(ue)
-'bool > 'lit
+'val(ue)
 
 \true 
-    'bool 𝖳
-    'bool ⊤
+    ' 𝖳
+    ' ⊤
 
 \imp(lies) A B 
     ' #A  ⇒  #B'quant
@@ -18,6 +17,13 @@ theory Foundation
 
 \eq(uals) A B 'lit #A'val  =  #B'val
 
+axiom Modus-ponens: B
+    premise conditional: A ⇒ B
+    premise antecedent: A
+
+axiom Universal-intro: ∀ x. A[x]
+    premise x. A[x]
+
 axiom Truth-1: 𝖳
 axiom Truth-2: A ⇒ A = 𝖳
 axiom Implication-1: A ⇒ B ⇒ A
@@ -28,7 +34,7 @@ axiom Equality-1: x = x
 axiom Equality-2: x = y ⇒ A[x] ⇒ A[y]
 
 \false = ∀ x. x
-    'bool 𝖥
+    ' 𝖥
 
 \not A = A ⇒ 𝖥 
     'lit ¬ #A'

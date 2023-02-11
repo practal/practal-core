@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.9] - 2023-02-11
+
+### Added
+
+- Axioms can have universally quantified premisses now; that is, [axioms can be inference rules now](https://practal.com/press/aair/1/).
+
+### Changed
+
+- Syntax colour schemes for both light and dark modes are based on [*Solarized*](https://ethanschoonover.com/solarized/) now.
+
 ## [0.0.8] - 2023-02-09
 
 This release addresses various issues about syntactic categories.
