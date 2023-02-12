@@ -610,7 +610,6 @@ function usesBuiltInCategory(lines : TextLines, results : Result<SectionData, To
 
 function readSyntaxSpec(lines : TextLines, results : Result<SectionData, TokenType>[]) : SyntaxSpec | undefined {
     const category = force(readSyntacticCategoryKeyword(lines, results[0] as Token<TokenType>));
-    debug("syntax spec, category = '" + category.str + "', long = " + category.long);
     let fragments : SyntaxFragment[] = [];
     let i = 1;
     while (i < results.length) {
