@@ -321,7 +321,7 @@ export class AbstractionInfo {
 }
 freeze(AbstractionInfo);
 
-export class Theory {
+export class UITheory {
 
     #lines : TextLines
     #diagnoses : Diagnoses
@@ -384,8 +384,8 @@ export class Theory {
             return undefined;
     }
 
-    static mk(lines : TextLines) : Theory {
-        return new Theory(lines);
+    static mk(lines : TextLines) : UITheory {
+        return new UITheory(lines);
     }    
 
     #canDeclareTheoryName() : boolean {
@@ -697,6 +697,6 @@ export class Theory {
     }
 
 }
-freeze(Theory);
+freeze(UITheory);
 
 

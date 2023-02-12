@@ -2,7 +2,7 @@ import { printPractalResult, SectionData, SectionDataTerm, SectionName, TokenTyp
 import { iterateContentSections, iterateContentTokens, iterateTokensDeep, printResult, Result, ResultKind, textOfToken, Token, Tree } from "./pyramids/deterministic_parser"
 import { Span, spanOfResult, SpanStr } from "./pyramids/span"
 import { absoluteSpan, TextLines } from "./pyramids/textlines"
-import { Handle, Theory } from "./theory"
+import { Handle, UITheory } from "./uitheory"
 import { debug } from "./things/debug"
 import { nat } from "./things/primitives"
 import { assertNever, force, internalError, Printer } from "./things/utils"
@@ -142,7 +142,7 @@ export function mkUITermVarApp(v : UIVar, params : UITerm[], result : Tree<Secti
     };
 }
 
-export function printUITerm(theory : Theory, uiterm : UITerm, print : Printer = debug) {
+export function printUITerm(theory : UITheory, uiterm : UITerm, print : Printer = debug) {
     let emitted = "";
     function emit(s : string) {
         emitted += s;
@@ -201,7 +201,7 @@ export function printUITerm(theory : Theory, uiterm : UITerm, print : Printer = 
     print(emitted);
 }
 
-export function constructUITermFromResult(theory : Theory, lines : TextLines, result : Result<SectionData, TokenType>) : UITerm | undefined {
+export function constructUITermFromResult(theory : UITheory, lines : TextLines, result : Result<SectionData, TokenType>) : UITerm | undefined {
     function error(span : Span, msg : string) {
         theory.error(absoluteSpan(lines, span), msg);
     }
@@ -320,7 +320,7 @@ function makeBound(v : UIVar) {
  * Returns undefined if the term could not be validated, otherwise the set of free variables. 
  * Changes the term by making variables free/bound, as discovered.
  **/
-export function validateUITerm(theory : Theory, lines : TextLines, term : UITerm, already_bound : VarName[] = []) : UIFreeVars | undefined {
+export function validateUITerm(theory : UITheory, lines : TextLines, term : UITerm, already_bound : VarName[] = []) : UIFreeVars | undefined {
 
     const freeVars : UIFreeVars = new UIFreeVars();
     const binders : VarName[] = [...already_bound];

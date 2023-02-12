@@ -6,7 +6,7 @@ import { ALL_TOKEN_TYPES, practaliumDP, ParseState, TokenType, SectionData, Sect
 import { assertNever } from './things/utils.js';
 import { configureDebugging, debug } from './things/debug.js';
 import { config } from 'process';
-import { Diagnoses, Diagnosis, Severity, Theory } from './theory.js';
+import { Diagnoses, Diagnosis, Severity, UITheory } from './uitheory.js';
 import { Span, spanOfResult } from './pyramids/span.js';
 import { generateCustomGrammar } from './term_parser.js';
 import { nat } from './things/primitives.js';
@@ -59,7 +59,7 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
     }
 }
 
-function diagnose(theory : Theory, lines : TextLines, diagnoses : Diagnosis[], result : Result<SectionData, TokenType>) {
+function diagnose(theory : UITheory, lines : TextLines, diagnoses : Diagnosis[], result : Result<SectionData, TokenType>) {
 
     function diag(result : Result<SectionData, TokenType>) {
         const kind = result.kind;
@@ -92,10 +92,10 @@ function diagnose(theory : Theory, lines : TextLines, diagnoses : Diagnosis[], r
 function tokenizer(lines : TextLines) : [Iterable<Token<TokenType>>, Iterable<Diagnosis>] {
 
     //const termParser = generateCustomGrammar(thy).parser;
-    const parsed1 = practaliumDP({theory : Theory.mk(lines), varParser : undefined, termParser : undefined}, lines, 0, 0);
+    const parsed1 = practaliumDP({theory : UITheory.mk(lines), varParser : undefined, termParser : undefined}, lines, 0, 0);
     if (parsed1 === undefined) return [[], []];
     const termParser = generateCustomGrammar(parsed1.state.theory);
-    const parsed = practaliumDP({theory : Theory.mk(lines), varParser : undefined, termParser : termParser.parser}, lines, 0, 0);
+    const parsed = practaliumDP({theory : UITheory.mk(lines), varParser : undefined, termParser : termParser.parser}, lines, 0, 0);
     if (parsed === undefined) return [[], []];
     const tokens = [...iterateTokensDeep(parsed.result)];
     const diagnoses = parsed.state.theory.diagnoses;

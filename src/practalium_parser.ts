@@ -4,7 +4,7 @@ import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, looka
 import { alphaNumL, anyCharL, charL, charsL, firstL, hyphenL, letterL, Lexer, literalL, lookaheadL, nonspaceL, nonspaces1L, nonspacesL, optL, rep1L, repL, seqL, spaces1L, underscoreL } from "./pyramids/lexer";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
 import { absoluteSpan, TextLines } from "./pyramids/textlines";
-import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, Theory } from "./theory";
+import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, UITheory } from "./uitheory";
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented, Printer } from "./things/utils";
@@ -210,7 +210,7 @@ export function SectionDataRule(rule : UIRule) : SectionDataRule {
 
 export type ParseState = {
 
-    theory : Theory
+    theory : UITheory
 
     varParser : P | undefined
 

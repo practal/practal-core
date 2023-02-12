@@ -1,7 +1,7 @@
 import { iterateTokensDeep, printResult, Result, ResultKind } from "./pyramids/deterministic_parser";
 import { practaliumDP, TokenType, SectionName, ParseState, SectionData } from "./practalium_parser";
 import { createTextLines, printTextLines, TextLines } from "./pyramids/textlines";
-import { Theory } from "./theory";
+import { UITheory } from "./uitheory";
 import { configureDebugging } from "./things/debug";
 import { readFileSync } from "fs";
 import { generateCustomGrammar } from "./term_parser";
@@ -26,13 +26,13 @@ console.log("-------------");
 printTextLines(example);
 console.log("-------------");
 console.log("Tokenizing ...");
-const state1 : ParseState = { theory : Theory.mk(example), varParser : undefined, termParser : undefined };
+const state1 : ParseState = { theory : UITheory.mk(example), varParser : undefined, termParser : undefined };
 const parsed1 = practaliumDP(state1, example, 0, 0);
 if (parsed1 === undefined) {
     console.log("Parsing failed.");
     process.exit(1);
 } 
-const theory = Theory.mk(example);
+const theory = UITheory.mk(example);
 const state : ParseState = { theory : theory, varParser : undefined, termParser : generateCustomGrammar(state1.theory).parser };
 const parsed = practaliumDP(state, example, 0, 0);
 if (parsed === undefined) {

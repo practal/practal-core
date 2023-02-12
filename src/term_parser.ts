@@ -6,7 +6,7 @@ import { Sym } from "./pyramids/grammar_symbols";
 import { charL, literalL, optL, rep1L, repL, seqL } from "./pyramids/lexer";
 import { lrDP, mkTerminalParsers, orGreedyTerminalParsers, TerminalParsers } from "./pyramids/lr_parser";
 import { Span } from "./pyramids/span";
-import { Handle, SyntaxFragmentKind, Theory } from "./theory";
+import { Handle, SyntaxFragmentKind, UITheory } from "./uitheory";
 import { debug } from "./things/debug";
 import { Digraph, transitiveClosure } from "./things/digraph";
 import { nat } from "./things/primitives";
@@ -187,7 +187,7 @@ export const basic_labels : [Sym, SectionData][] = [
     ["Params", SectionDataTerms(SectionName.params)]
 ];
 
-export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle, Set<Handle>> {
+export function computeSyntacticCategorySuccessors(theory : UITheory) : Map<Handle, Set<Handle>> {
     const sc_infos = theory.syntacticCategories;
     let transitive = new Digraph();
     for (let sc = 0; sc < sc_infos.length; sc++)  {
@@ -205,7 +205,7 @@ export function computeSyntacticCategorySuccessors(theory : Theory) : Map<Handle
     return result;
 }
 
-export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, rhs : Expr}[], texts : Map<string, nat>, syntactic_categories : Set<Handle>, labels : Map<string, SectionData> } {
+export function generateCustomSyntax(theory : UITheory) : { rules : { lhs : Sym, rhs : Expr}[], texts : Map<string, nat>, syntactic_categories : Set<Handle>, labels : Map<string, SectionData> } {
     const rules : { lhs : Sym, rhs : Expr, bounds? : Map<string, nat>, frees? : Map<string, nat>}[] = [];
     const texts : Map<string, nat> = new Map();
     const syntactic_categories : Set<nat> = new Set([theory.SC_ATOMIC, theory.SC_TERM]);
@@ -435,7 +435,7 @@ export function generateCustomSyntax(theory : Theory) : { rules : { lhs : Sym, r
     return { rules : rules, texts : texts, syntactic_categories : syntactic_categories, labels : labels };
 }
 
-export function generateCustomGrammar(theory : Theory) : { grammar : ExprGrammar, parser : P, syntactic_categories_with_Conflicts : Set<Handle | null> } {
+export function generateCustomGrammar(theory : UITheory) : { grammar : ExprGrammar, parser : P, syntactic_categories_with_Conflicts : Set<Handle | null> } {
     let customSyntax = generateCustomSyntax(theory);
     let customGrammar = cloneExprGrammar(basic_grammar);
     customGrammar.rules.push(...customSyntax.rules);

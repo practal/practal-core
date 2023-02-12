@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { TextLines } from './pyramids/textlines';
 import { DetParser, Token } from './pyramids/deterministic_parser';
 import { debug } from './things/debug';
-import { Diagnosis, Severity } from './theory';
+import { Diagnosis, Severity } from './uitheory';
 import { Span, spanOfResult } from './pyramids/span';
 import { assertNever, notImplemented } from './things/utils';
 
