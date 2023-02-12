@@ -2,7 +2,7 @@ import { printPractalResult, SectionData, SectionDataTerm, SectionName, TokenTyp
 import { iterateContentSections, iterateContentTokens, iterateTokensDeep, printResult, Result, ResultKind, textOfToken, Token, Tree } from "./pyramids/deterministic_parser"
 import { Span, spanOfResult, SpanStr } from "./pyramids/span"
 import { absoluteSpan, TextLines } from "./pyramids/textlines"
-import { Handle, UITheory } from "./uitheory"
+import { Handle, NameDecl, UITheory } from "./uitheory"
 import { debug } from "./things/debug"
 import { nat } from "./things/primitives"
 import { assertNever, force, internalError, Printer } from "./things/utils"
@@ -85,13 +85,13 @@ export function mkUITemplate(bounds : UIVar[], body : UITerm) : UITemplate {
 }
 
 export type UIRule = {
-    premisses : { label : SpanStr | undefined, premise : UITemplate }[]
-    conclusions : { label : SpanStr | undefined, conclusion : UITerm }[]
+    premisses : { label : NameDecl | undefined, premise : UITemplate }[]
+    conclusions : { label : NameDecl | undefined, conclusion : UITerm }[]
 }
 
 export function mkUIRule(
-    premisses : { label : SpanStr | undefined, premise : UITemplate }[],
-    conclusions : { label : SpanStr | undefined, conclusion : UITerm }[]) : UIRule 
+    premisses : { label : NameDecl | undefined, premise : UITemplate }[],
+    conclusions : { label : NameDecl | undefined, conclusion : UITerm }[]) : UIRule 
 {
     return {
         premisses : premisses,

@@ -4,7 +4,7 @@ import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, looka
 import { alphaNumL, anyCharL, charL, charsL, firstL, hyphenL, letterL, Lexer, literalL, lookaheadL, nonspaceL, nonspaces1L, nonspacesL, optL, rep1L, repL, seqL, spaces1L, underscoreL } from "./pyramids/lexer";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
 import { absoluteSpan, TextLines } from "./pyramids/textlines";
-import { Handle, Head, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, UITheory } from "./uitheory";
+import { Handle, Head, NameDecl, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, UITheory } from "./uitheory";
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented, Printer } from "./things/utils";
@@ -169,11 +169,11 @@ export function SectionDataTemplate(template? : UITemplate) : SectionDataTemplat
 
 export type SectionDataPremise = {
     type : SectionName.premise,
-    label? : SpanStr,
+    label? : NameDecl,
     premise? : UITemplate
 }
 
-export function SectionDataPremise(label? : SpanStr, premise? : UITemplate) : SectionDataPremise {
+export function SectionDataPremise(label? : NameDecl, premise? : UITemplate) : SectionDataPremise {
     return {
         type : SectionName.premise,
         label : label,
@@ -183,11 +183,11 @@ export function SectionDataPremise(label? : SpanStr, premise? : UITemplate) : Se
 
 export type SectionDataConclusion = {
     type : SectionName.conclusion,
-    label? : SpanStr,
+    label? : NameDecl,
     conclusion? : UITerm
 }
 
-export function SectionDataConclusion(label? : SpanStr, conclusion? : UITerm) : SectionDataConclusion {
+export function SectionDataConclusion(label? : NameDecl, conclusion? : UITerm) : SectionDataConclusion {
     return {
         type : SectionName.conclusion,
         label : label,
@@ -255,7 +255,7 @@ const whitespaceDP : P = rep1DP(tokenDP(spaces1L, TokenType.whitespace));
 const optWhitespaceDP : P = repDP(tokenDP(spaces1L, TokenType.whitespace));
 const invalidDP : P = debugDP("unknown", tokenDP(nonspaces1L, TokenType.invalid));
 const invalidCharDP : P = debugDP("unknown", tokenDP(nonspaceL, TokenType.invalid));
-const labelDP : P = seqDP(tokenDP(identifierL, TokenType.label), optSpacesDP, tokenDP(literalL(":"), TokenType.label_colon));
+const labelDP : P = seqDP(tokenDP(idDeclL, TokenType.label), optSpacesDP, tokenDP(literalL(":"), TokenType.label_colon));
 const abstractionDP : P = tokenDP(seqL(literalL("\\"), identifierL), TokenType.abstraction);
 const abstractionDeclDP : P = tokenDP(seqL(literalL("\\"), idDeclL), TokenType.abstraction_declaration);
 const freeT : P = tokenDP(seqL(literalL("?"), identifierL), TokenType.free_variable);
@@ -702,13 +702,13 @@ const declarationBody = enumDP(definitionSection, syntaxSection, inlineLatexSect
 const declarationSection : S = { bullet : modifyResultDP(declarationDP, addDeclarationHead), 
     body: declarationBody, type: SectionDataNone(SectionName.declaration), process: processDeclaration};
 
-function readLabel(lines : TextLines, result : Result<SectionData, TokenType>) : SpanStr | undefined {
+function readLabel(lines : TextLines, result : Result<SectionData, TokenType>) : NameDecl | undefined {
     const labels = [...iterateContentTokens(result, t => t === TokenType.label)];
-    let label : SpanStr | undefined = undefined;
+    let label : NameDecl | undefined = undefined;
     if (labels.length === 1) {
         const span = absoluteSpan(lines, spanOfResult(labels[0]));
         const text =  textOfToken(lines, labels[0]);
-        label = new SpanStr(span, text);
+        label = NameDecl.mk(span, text);
     } 
     return label;
 }
@@ -742,8 +742,8 @@ const ruleDP : P = modifyResultDP(enumDP(rulePremiseSection, ruleInferSection), 
     if (result === undefined) return undefined;
     const premisses = iterateContentSections(result.result, s => s.type === SectionName.premise);
     const conclusions = iterateContentSections(result.result, s => s.type === SectionName.conclusion);
-    let ps : { label : SpanStr | undefined, premise : UITemplate }[] = [];
-    let cs : { label : SpanStr | undefined, conclusion : UITerm }[] = [];
+    let ps : { label : NameDecl | undefined, premise : UITemplate }[] = [];
+    let cs : { label : NameDecl | undefined, conclusion : UITerm }[] = [];
     for (const premise of premisses) {
         const p = premise.type as SectionDataPremise;
         if (p.premise) 

@@ -334,7 +334,8 @@ export class UITheory {
     #online_dag : OnlineDAG<Handle>
     #SC_ATOMIC : Handle
     #SC_TERM : Handle
-    #axioms : [SpanStr | undefined, UIRule][];
+    #axioms : [NameDecl | undefined, UIRule][];
+    #axiomNormals : Map<string, Handle>
 
     private constructor(lines : TextLines) {
         this.#lines = lines;
@@ -350,6 +351,7 @@ export class UITheory {
         this.#SC_TERM = this.#addSyntacticCategory(NameDecl.SC_TERM);
         this.addSyntacticCategoryPriority(Span.none, this.#SC_ATOMIC, this.#SC_TERM);
         this.#axioms = [];
+        this.#axiomNormals = new Map();
     } 
 
     get SC_ATOMIC() : Handle { return this.#SC_ATOMIC; }
@@ -692,8 +694,43 @@ export class UITheory {
         }        
     }
 
-    addAxiom(label : SpanStr | undefined, axiom : UIRule) {
-        this.#axioms.push([label, axiom]);
+    #checkLabelsAreDifferent(labels : (NameDecl | undefined)[]) : boolean {
+        const used : Set<string> = new Set();
+        let ok = true;
+        for (const labelled of labels) {
+            if (labelled === undefined) continue;
+            for (const normal of labelled.normals) {
+                if (used.has(normal)) {
+                    this.error(labelled.span, "Duplicate label '" + labelled.decl + "'.");
+                    ok = false;
+                } 
+            }
+            for (const normal of labelled.normals) {
+                used.add(normal);
+            }
+        }
+        return ok;
+    }
+
+    addAxiom(label : NameDecl | undefined, axiom : UIRule) {
+        if (!this.#checkLabelsAreDifferent([...axiom.premisses, ... axiom.conclusions].map(a => a.label))) return;
+        if (label === undefined)
+            this.#axioms.push([label, axiom]);
+        else {
+            let ok = true
+            for (const normal of label.normals) {
+                if (this.#axiomNormals.has(normal)) {
+                    this.error(label.span, "Duplicate label '" + label.decl + "'.");
+                    ok = false;
+                }
+            }
+            if (!ok) return;
+            const handle = this.#axioms.length;
+            this.#axioms.push([label, axiom]);
+            for (const normal of label.normals) {
+                this.#axiomNormals.set(normal, handle);
+            }
+        }
     }
 
 }
