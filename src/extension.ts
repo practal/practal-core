@@ -47,6 +47,8 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.comma : return ["practal-punctuation", []];
         case TokenType.premise : return ["practal-secondary-keyword", []];
         case TokenType.infer : return ["practal-secondary-keyword", []];
+        case TokenType.proof : return ["practal-secondary-keyword", []];
+        case TokenType.sorry : return ["practal-primary-keyword", []];
         case TokenType.syntactic_transitive_less: return ["practal-syntactic-comparator", []];
         case TokenType.syntactic_transitive_greater: return ["practal-syntactic-comparator", []];
         case TokenType.syntax_fragment: return ["practal-syntax-fragment", []];

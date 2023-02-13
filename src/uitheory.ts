@@ -334,8 +334,8 @@ export class UITheory {
     #online_dag : OnlineDAG<Handle>
     #SC_ATOMIC : Handle
     #SC_TERM : Handle
-    #axioms : [NameDecl | undefined, UIRule][];
-    #axiomNormals : Map<string, Handle>
+    #rules : [NameDecl | undefined, UIRule][];
+    #ruleNormals : Map<string, Handle>
 
     private constructor(lines : TextLines) {
         this.#lines = lines;
@@ -350,8 +350,8 @@ export class UITheory {
         this.#SC_ATOMIC = this.#addSyntacticCategory(NameDecl.SC_ATOMIC);
         this.#SC_TERM = this.#addSyntacticCategory(NameDecl.SC_TERM);
         this.addSyntacticCategoryPriority(Span.none, this.#SC_ATOMIC, this.#SC_TERM);
-        this.#axioms = [];
-        this.#axiomNormals = new Map();
+        this.#rules = [];
+        this.#ruleNormals = new Map();
     } 
 
     get SC_ATOMIC() : Handle { return this.#SC_ATOMIC; }
@@ -712,24 +712,25 @@ export class UITheory {
         return ok;
     }
 
-    addAxiom(label : NameDecl | undefined, axiom : UIRule) {
-        if (!this.#checkLabelsAreDifferent([...axiom.premisses, ... axiom.conclusions].map(a => a.label))) return;
+    addRule(label : NameDecl | undefined, rule : UIRule) {
+        if (!this.#checkLabelsAreDifferent([...rule.premisses, ... rule.conclusions].map(a => a.label))) return;
         if (label === undefined)
-            this.#axioms.push([label, axiom]);
+            this.#rules.push([label, rule]);
         else {
             let ok = true
             for (const normal of label.normals) {
-                if (this.#axiomNormals.has(normal)) {
+                if (this.#ruleNormals.has(normal)) {
                     this.error(label.span, "Duplicate label '" + label.decl + "'.");
                     ok = false;
                 }
             }
             if (!ok) return;
-            const handle = this.#axioms.length;
-            this.#axioms.push([label, axiom]);
+            const handle = this.#rules.length;
+            this.#rules.push([label, rule]);
             for (const normal of label.normals) {
-                this.#axiomNormals.set(normal, handle);
+                this.#ruleNormals.set(normal, handle);
             }
+    
         }
     }
 

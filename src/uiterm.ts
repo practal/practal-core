@@ -99,6 +99,10 @@ export function mkUIRule(
     };
 }
 
+export type UIProof = {
+
+}
+
 export function mkUITermValue(abstr : Handle, syntax? : Tree<SectionData, TokenType>) : UITermAbstrApp {
     return {
         kind : UITermKind.AbstrApp,

@@ -8,7 +8,7 @@ import { Handle, Head, NameDecl, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec,
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented, Printer } from "./things/utils";
-import { constructUITermFromResult, mkUIRule, mkUITemplate, mkUIVar, printUITerm, UIRule, UITemplate, UITerm, UITermAbstrApp, UITermVarApp, UIVar, validateUITerm, VarName } from "./uiterm";
+import { constructUITermFromResult, mkUIRule, mkUITemplate, mkUIVar, printUITerm, UIProof, UIRule, UITemplate, UITerm, UITermAbstrApp, UITermVarApp, UIVar, validateUITerm, VarName } from "./uiterm";
 
 export enum TokenType {
     module_name,
@@ -51,6 +51,8 @@ export enum TokenType {
     latex_space,
     premise,
     infer,
+    proof,
+    sorry,
     invalid // must be last for ALL_TOKEN_TYPES to be defined correctly
 }
 
@@ -58,7 +60,6 @@ export const ALL_TOKEN_TYPES : TokenType[] = [...Array(TokenType.invalid+1).keys
 
 export enum SectionName {
     theory,
-    axiom,
     declaration,
     comment,
     error,
@@ -68,8 +69,6 @@ export enum SectionName {
     display_latex,
     newline,
     definition,
-    premise,
-    conclusion,
 
     // Terms
     operation_app,
@@ -85,14 +84,17 @@ export enum SectionName {
 
     // Templates and Rules
     template,
-    rule
+    rule,
+    premise,
+    conclusion,
+    proof,
 
 }
 
-export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms | SectionDataCustom | SectionDataTemplate | SectionDataRule | SectionDataPremise | SectionDataConclusion
+export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms | SectionDataCustom | SectionDataTemplate | SectionDataRule | SectionDataPremise | SectionDataConclusion | SectionDataProof
 
 export type SectionName_DataNone = 
-    SectionName.theory | SectionName.axiom | SectionName.declaration | SectionName.comment | SectionName.error |
+    SectionName.theory | SectionName.declaration | SectionName.comment | SectionName.error |
     SectionName.syntax | SectionName.syntactic_category | SectionName.inline_latex | SectionName.display_latex |
     SectionName.newline | SectionName.definition 
 
@@ -195,15 +197,33 @@ export function SectionDataConclusion(label? : NameDecl, conclusion? : UITerm) :
     };
 }
 
+export type SectionDataProof = {
+    type : SectionName.proof,
+    proof : UIProof | undefined
+}
+
+export function SectionDataProof(proof : UIProof | undefined) : SectionDataProof {
+    return { type : SectionName.proof, proof : proof };
+}
+
+export enum RuleKind {
+    axiom,
+    lemma,
+    theorem,
+    corollary,
+    conjecture
+}
 
 export type SectionDataRule = {
     type : SectionName.rule,
+    kind : RuleKind,
     rule : UIRule
 }
 
-export function SectionDataRule(rule : UIRule) : SectionDataRule {
+export function SectionDataRule(kind : RuleKind, rule : UIRule) : SectionDataRule {
     return {
         type : SectionName.rule,
+        kind : kind,
         rule : rule
     };
 }
@@ -269,6 +289,10 @@ const commaDP : P = tokenDP(literalL(","), TokenType.comma);
 
 function termDP(binders : VarName[] = []) : P {
     return useDP((lines, state) => totalTermOfDP(lines, binders, state.termParser));
+}
+
+function proofDP() : P {
+    return totalOfDP(tokenDP(literalL("sorry"), TokenType.sorry));
 }
 
 const boundArgsDP : P = seqDP(boundVariableDP, repDP(optWhitespaceDP, boundVariableDP), optSpacesDP, dotDP);
@@ -736,42 +760,73 @@ function processConclusion(lines : TextLines, result : R) : R {
     result.result.type = SectionDataConclusion(label, term);
     return result;
 }
+function processProof(lines : TextLines, result : R) : R {
+    if (result === undefined) return undefined;
+    const label = readLabel(lines, result.result);
+    const sections = [...iterateContentSections(result.result, s => s.type === SectionName.proof)];
+    let proof : UIProof | undefined = undefined;
+    if (sections.length === 1) {
+        const section = sections[0];
+        proof = (section.type as SectionDataProof).proof;
+    }
+    result.result.type = SectionDataProof(proof);
+    return result;
+}
 const rulePremiseSection : S = { bullet : seqDP(tokenDP(literalL("premise"), TokenType.premise), optDP(spacesDP, labelDP)), body : templateDP, type : null, process: processPremise};
 const ruleInferSection : S = { bullet : optDP(seqDP(tokenDP(literalL("infer"), TokenType.infer), optDP(spacesDP, labelDP))), body : termDP(), type : null, process: processConclusion };
-const ruleDP : P = modifyResultDP(enumDP(rulePremiseSection, ruleInferSection), (lines, result) => {
-    if (result === undefined) return undefined;
-    const premisses = iterateContentSections(result.result, s => s.type === SectionName.premise);
-    const conclusions = iterateContentSections(result.result, s => s.type === SectionName.conclusion);
-    let ps : { label : NameDecl | undefined, premise : UITemplate }[] = [];
-    let cs : { label : NameDecl | undefined, conclusion : UITerm }[] = [];
-    for (const premise of premisses) {
-        const p = premise.type as SectionDataPremise;
-        if (p.premise) 
-            ps.push({label : p.label, premise : p.premise});
-    }
-    for (const conclusion of conclusions) {
-        const c = conclusion.type as SectionDataConclusion;
-        if (c.conclusion)
-            cs.push({label : c.label, conclusion : c.conclusion});
-    }
-    const rule = mkUIRule(ps, cs);
-    result.result.type = SectionDataRule(rule);
-    return result;
-});
+const ruleProofSection : S = { bullet : optDP(seqDP(tokenDP(literalL("proof"), TokenType.proof), optDP(spacesDP, labelDP))), body : proofDP(), type : null, process: processProof };
+function ruleDP(k : RuleKind, ...sections : S[]) : P { 
+    return  modifyResultDP(enumDP(...sections), (lines, result) => {
+        if (result === undefined) return undefined;
+        const premisses = iterateContentSections(result.result, s => s.type === SectionName.premise);
+        const conclusions = iterateContentSections(result.result, s => s.type === SectionName.conclusion);
+        let ps : { label : NameDecl | undefined, premise : UITemplate }[] = [];
+        let cs : { label : NameDecl | undefined, conclusion : UITerm }[] = [];
+        for (const premise of premisses) {
+            const p = premise.type as SectionDataPremise;
+            if (p.premise) 
+                ps.push({label : p.label, premise : p.premise});
+        }
+        for (const conclusion of conclusions) {
+            const c = conclusion.type as SectionDataConclusion;
+            if (c.conclusion)
+                cs.push({label : c.label, conclusion : c.conclusion});
+        }
+        const rule = mkUIRule(ps, cs);
+        result.result.type = SectionDataRule(k, rule);
+        return result;
+    });
+}
 
-function processAxiom(lines : TextLines, result : R) : R {
+function processRule(lines : TextLines, result : R) : R {
     if (result === undefined) return undefined;
     const label = readLabel(lines, result.result);
     const rules = [...iterateContentSections(result.result, s => s.type === SectionName.rule)];
     if (rules.length === 1) {
-        result.state.theory.addAxiom(label, (rules[0].type as SectionDataRule).rule);
+        result.state.theory.addRule(label, (rules[0].type as SectionDataRule).rule);
     }
     return result;
 }
-const axiomDP : P = seqDP(keyword("axiom"), optDP(spacesDP, labelDP));
-const axiomSection : S = { bullet: axiomDP, body: ruleDP, type: SectionDataNone(SectionName.axiom), process: processAxiom };
 
-export const practaliumDP : P = enumDP(syntacticCategorySection, commentSection, theorySection, axiomSection, declarationSection, errorSection);
+const axiomDP : P = seqDP(keyword("axiom"), optDP(spacesDP, labelDP));
+const axiomSection : S = { bullet: axiomDP, body: ruleDP(RuleKind.axiom, rulePremiseSection, ruleInferSection), type: null, process: processRule };
+
+const conjectureDP : P = seqDP(keyword("conjecture"), optDP(spacesDP, labelDP));
+const conjectureSection : S = { bullet: conjectureDP, body: ruleDP(RuleKind.conjecture, rulePremiseSection, ruleInferSection), type: null, process: processRule };
+
+const lemmaDP : P = seqDP(keyword("lemma"), optDP(spacesDP, labelDP));
+const lemmaSection : S = { bullet: lemmaDP, body: ruleDP(RuleKind.lemma, ruleProofSection, rulePremiseSection, ruleInferSection), type: null, process: processRule };
+
+const theoremDP : P = seqDP(keyword("theorem"), optDP(spacesDP, labelDP));
+const theoremSection : S = { bullet: theoremDP, body: ruleDP(RuleKind.theorem, ruleProofSection, rulePremiseSection, ruleInferSection), type: null, process: processRule };
+
+const corollaryDP : P = seqDP(keyword("corollary"), optDP(spacesDP, labelDP));
+const corollarySection : S = { bullet: corollaryDP, body: ruleDP(RuleKind.corollary, ruleProofSection, rulePremiseSection, ruleInferSection), type: null, process: processRule };
+
+
+export const practaliumDP : P = enumDP(syntacticCategorySection, commentSection, theorySection, 
+    axiomSection, conjectureSection, lemmaSection, theoremSection, corollarySection, 
+    declarationSection, errorSection);
 
 
 
