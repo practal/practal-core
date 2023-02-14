@@ -18,6 +18,7 @@ const semanticTokenColorizations = `
         "practal-variable": {"foreground": "normal"},          
         "practal-comment" : {"foreground": "comment"},          
         "practal-label" : {"foreground": "weak"},
+        "practal-label-expr" : {"foreground": "normal", "italic": true},
         "practal-square-braces" : {"foreground":"punctuation"},
         "practal-punctuation" : {"foreground":"punctuation"},
         "practal-syntax-fragment" : {"foreground":"normal"},

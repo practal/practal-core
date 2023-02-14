@@ -85,22 +85,86 @@ export function mkUITemplate(bounds : UIVar[], body : UITerm) : UITemplate {
 }
 
 export type UIRule = {
-    premisses : { label : NameDecl | undefined, premise : UITemplate }[]
-    conclusions : { label : NameDecl | undefined, conclusion : UITerm }[]
+    premisses : { label : NameDecl | undefined, premise : UITemplate | undefined  }[],
+    conclusions : { label : NameDecl | undefined, conclusion : UITerm | undefined  }[],
+    proofs : { label : SpanStr | undefined, proof : UIProof | undefined  }[],
+    finish : UIProofStepSorry | UIProofStepQED | undefined
 }
 
 export function mkUIRule(
-    premisses : { label : NameDecl | undefined, premise : UITemplate }[],
-    conclusions : { label : NameDecl | undefined, conclusion : UITerm }[]) : UIRule 
+    premisses : { label : NameDecl | undefined, premise : UITemplate | undefined }[],
+    conclusions : { label : NameDecl | undefined, conclusion : UITerm | undefined }[],
+    proofs : { label : SpanStr | undefined, proof : UIProof | undefined }[],
+    finish : UIProofStepSorry | UIProofStepQED | undefined) : UIRule 
 {
     return {
         premisses : premisses,
-        conclusions : conclusions
+        conclusions : conclusions,
+        proofs : proofs,
+        finish : finish
     };
 }
 
-export type UIProof = {
+export type UIProofStep = UIProofStepLemma | UIProofStepNote | UIProofStepQED | UIProofStepSorry
 
+export enum UIProofStepKind {
+    Lemma,
+    Note,
+    QED,
+    Sorry
+}
+
+export type UIProofStepLemma = {
+    kind : UIProofStepKind.Lemma,
+    label : NameDecl | undefined,
+    rule : UIRule
+}
+
+export type UIProofStepNote = {
+    kind : UIProofStepKind.Note,
+    label : NameDecl | undefined,
+    thmExpr : UIThmExpr
+}
+
+export type UIProofStepQED = {
+    kind : UIProofStepKind.QED,
+    thmExpr : UIThmExpr | undefined
+}
+
+export type UIProofStepSorry = {
+    kind : UIProofStepKind.Sorry
+}
+
+export type UIProof = {
+    label : SpanStr | undefined
+    steps : UIProofStep[]
+}
+
+export type UIThmExpr = UIThmExprLabel | UIThmExprSubst | UIThmExprApply | UIThmExprChoose
+
+export enum UIThmExprKind {
+    Label,
+    Subst,
+    Apply,
+    Choose
+}
+
+export type UIThmExprLabel = {
+    kind : UIThmExprKind.Label
+    label : SpanStr 
+}
+
+export type UIThmExprSubst = {
+    kind : UIThmExprKind.Subst
+}
+
+export type UIThmExprApply = {
+    kind : UIThmExprKind.Apply
+}
+
+export type UIThmExprChoose = {
+    kind : UIThmExprKind.Choose
+    label : SpanStr
 }
 
 export function mkUITermValue(abstr : Handle, syntax? : Tree<SectionData, TokenType>) : UITermAbstrApp {

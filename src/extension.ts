@@ -38,6 +38,7 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.variable : return ["practal-variable", []];
         case TokenType.comment : return ["practal-comment", []];
         case TokenType.label : return ["practal-label", []];
+        case TokenType.label_expr : return ["practal-label-expr", []];
         case TokenType.label_colon : return ["practal-label", []];      
         case TokenType.round_open : return ["practal-round-braces", []]; 
         case TokenType.round_close : return ["practal-round-braces", []]; 
@@ -49,6 +50,8 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.infer : return ["practal-secondary-keyword", []];
         case TokenType.proof : return ["practal-secondary-keyword", []];
         case TokenType.sorry : return ["practal-primary-keyword", []];
+        case TokenType.qed : return ["practal-secondary-keyword", []];  
+        case TokenType.note : return ["practal-secondary-keyword", []];  
         case TokenType.syntactic_transitive_less: return ["practal-syntactic-comparator", []];
         case TokenType.syntactic_transitive_greater: return ["practal-syntactic-comparator", []];
         case TokenType.syntax_fragment: return ["practal-syntax-fragment", []];

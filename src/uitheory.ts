@@ -694,10 +694,11 @@ export class UITheory {
         }        
     }
 
-    #checkLabelsAreDifferent(labels : (NameDecl | undefined)[]) : boolean {
+    #checkRuleLabels(premisses : (NameDecl | undefined)[], conclusions : (NameDecl | undefined)[], proofs : (SpanStr | undefined)[]) : boolean {
+        debug(`check rule labels: ${premisses.length}, ${conclusions.length}, ${proofs.length}`);
         const used : Set<string> = new Set();
         let ok = true;
-        for (const labelled of labels) {
+        for (const labelled of [...premisses, ...conclusions]) {
             if (labelled === undefined) continue;
             for (const normal of labelled.normals) {
                 if (used.has(normal)) {
@@ -709,11 +710,34 @@ export class UITheory {
                 used.add(normal);
             }
         }
+        const obligations : Map<string, boolean> = new Map();
+        for (const labelled of conclusions) {
+            if (labelled === undefined) continue;
+            for (const normal of labelled.normals) {
+                obligations.set(normal, false);
+            }
+        }
+        for (const label of proofs) {
+            if (label === undefined) continue;
+            const proven = obligations.get(label.str);
+            if (proven === undefined) {
+                this.error(label.span, "No such conclusion '" + label + "' found.");
+                ok = false;
+            } else if (proven) {
+                this.error(label.span, "Duplicate proof for '" + label + "'.");
+                ok = false;
+            } else {
+                obligations.set(label.str, true);
+            }
+        }
         return ok;
     }
 
     addRule(label : NameDecl | undefined, rule : UIRule) {
-        if (!this.#checkLabelsAreDifferent([...rule.premisses, ... rule.conclusions].map(a => a.label))) return;
+        const premisses_labels = [...rule.premisses].map(a => a.label);
+        const concl_labels = [...rule.conclusions].map(a => a.label);
+        const proof_labels = [...rule.proofs].map(p => p.label);
+        if (!this.#checkRuleLabels(premisses_labels, concl_labels, proof_labels)) return;
         if (label === undefined)
             this.#rules.push([label, rule]);
         else {
@@ -730,7 +754,6 @@ export class UITheory {
             for (const normal of label.normals) {
                 this.#ruleNormals.set(normal, handle);
             }
-    
         }
     }
 

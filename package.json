@@ -58,6 +58,7 @@
               "practal-variable": {"foreground": "#93a1a1"},          
               "practal-comment" : {"foreground": "#657b83"},          
               "practal-label" : {"foreground": "#839496"},
+              "practal-label-expr" : {"foreground": "#93a1a1", "italic": true},
               "practal-square-braces" : {"foreground":"#93a1a1"},
               "practal-punctuation" : {"foreground":"#93a1a1"},
               "practal-syntax-fragment" : {"foreground":"#93a1a1"},
@@ -89,6 +90,7 @@
               "practal-variable": {"foreground": "#586e75"},          
               "practal-comment" : {"foreground": "#839496"},          
               "practal-label" : {"foreground": "#657b83"},
+              "practal-label-expr" : {"foreground": "#586e75", "italic": true},
               "practal-square-braces" : {"foreground":"#586e75"},
               "practal-punctuation" : {"foreground":"#586e75"},
               "practal-syntax-fragment" : {"foreground":"#586e75"},
@@ -99,7 +101,7 @@
               "practal-latex-control-sequence" : { "italic": true, "foreground" : "#6c71c4"},
               "practal-round-braces": {"foreground": "#93a1a1"}
           }
-      }      
+      }
       },      
       "[practal]": {
         "editor.occurrencesHighlight": false,        
