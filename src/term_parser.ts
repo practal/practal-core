@@ -435,7 +435,7 @@ export function generateCustomSyntax(theory : UITheory) : { rules : { lhs : Sym,
     return { rules : rules, texts : texts, syntactic_categories : syntactic_categories, labels : labels };
 }
 
-export function generateCustomGrammar(theory : UITheory) : { grammar : ExprGrammar, parser : P, syntactic_categories_with_Conflicts : Set<Handle | null> } {
+export function generateCustomGrammar(theory : UITheory) : { grammar : ExprGrammar, maximum_valid : P, maximum_invalid : P, syntactic_categories_with_Conflicts : Set<Handle | null> } {
     let customSyntax = generateCustomSyntax(theory);
     let customGrammar = cloneExprGrammar(basic_grammar);
     customGrammar.rules.push(...customSyntax.rules);
@@ -452,7 +452,7 @@ export function generateCustomGrammar(theory : UITheory) : { grammar : ExprGramm
     const fragments_parser : TerminalParsers<ParseState, SectionData, TokenType> = mkTerminalParsers(texts.map(t => ["§" + t[1], tokenDP(literalL(t[0]), TokenType.custom_syntax)]));
     const custom_terminal_parsers : TerminalParsers<ParseState, SectionData, TokenType> = orGreedyTerminalParsers([terminalParsers1, fragments_parser, terminalParsers2]);
     const labels = [...basic_labels, ...customSyntax.labels];
-    const customLRParser = lrDP(customGrammar, labels, custom_terminal_parsers, SectionDataTerm(SectionName.invalid)); 
+    const customLRParser = lrDP(customGrammar, labels, custom_terminal_parsers, SectionDataTerm(SectionName.invalid_term)); 
     const conflicts = customLRParser.conflicts;
     const conflict_scs : Set<Handle | null> = new Set();
     if (conflicts.size > 0) {
@@ -477,5 +477,5 @@ export function generateCustomGrammar(theory : UITheory) : { grammar : ExprGramm
             debug("  conflict without clear source");
         }
     }
-    return { grammar : customGrammar, parser : customLRParser.parser, syntactic_categories_with_Conflicts : conflict_scs }; 
+    return { grammar : customGrammar, maximum_valid : customLRParser.maximum_valid, maximum_invalid : customLRParser.maximum_invalid, syntactic_categories_with_Conflicts : conflict_scs }; 
 }

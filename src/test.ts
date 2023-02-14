@@ -1,5 +1,5 @@
 import { iterateTokensDeep, printResult, Result, ResultKind } from "./pyramids/deterministic_parser";
-import { practaliumDP, TokenType, SectionName, ParseState, SectionData } from "./practalium_parser";
+import { practaliumDP, TokenType, SectionName, ParseState, SectionData, nameOfTokenType } from "./practalium_parser";
 import { createTextLines, printTextLines, TextLines } from "./pyramids/textlines";
 import { UITheory } from "./uitheory";
 import { configureDebugging } from "./things/debug";
@@ -9,8 +9,7 @@ import { generateCustomGrammar } from "./term_parser";
 function printResultOfParsing(lines : TextLines, result : Result<SectionData, TokenType>) {
     function log(s : string) { console.log(s); }
     function nameOfS(type : SectionData) : string { return SectionName[type.type]; }
-    function nameOfT(type : TokenType) : string { return TokenType[type]; }
-    printResult(console.log, nameOfS, nameOfT, lines, result);
+    printResult(console.log, nameOfS, nameOfTokenType, lines, result);
 }
 
 function loadExample(name : string) : TextLines {
@@ -26,14 +25,15 @@ console.log("-------------");
 printTextLines(example);
 console.log("-------------");
 console.log("Tokenizing ...");
-const state1 : ParseState = { theory : UITheory.mk(example), varParser : undefined, termParser : undefined };
+const state1 : ParseState = { theory : UITheory.mk(example), varParser : undefined, maximum_valid : undefined, maximum_invalid : undefined };
 const parsed1 = practaliumDP(state1, example, 0, 0);
 if (parsed1 === undefined) {
     console.log("Parsing failed.");
     process.exit(1);
 } 
 const theory = UITheory.mk(example);
-const state : ParseState = { theory : theory, varParser : undefined, termParser : generateCustomGrammar(state1.theory).parser };
+const lr = generateCustomGrammar(state1.theory);
+const state : ParseState = { theory : theory, varParser : undefined, maximum_valid : lr.maximum_valid, maximum_invalid : lr.maximum_invalid };
 const parsed = practaliumDP(state, example, 0, 0);
 if (parsed === undefined) {
     console.log("Parsing failed.");
@@ -41,7 +41,7 @@ if (parsed === undefined) {
     const tokens = [...iterateTokensDeep(parsed.result)];
     console.log("Found " + tokens.length + " tokens.");
     for (const token of tokens) {
-        console.log(`${token.line} (${token.startOffsetInclusive}-${token.endOffsetInclusive}): '${TokenType[token.type]}'`);
+        console.log(`${token.line} (${token.startOffsetInclusive}-${token.endOffsetInclusive}): '${nameOfTokenType(token.type)}'`);
     }
     console.log("----------------");
     printResultOfParsing(example, parsed.result);

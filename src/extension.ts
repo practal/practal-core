@@ -39,6 +39,7 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.comment : return ["practal-comment", []];
         case TokenType.label : return ["practal-label", []];
         case TokenType.label_expr : return ["practal-label-expr", []];
+        case TokenType.thm_expr_punctuation : return ["practal-secondary-keyword", []];
         case TokenType.label_colon : return ["practal-label", []];      
         case TokenType.round_open : return ["practal-round-braces", []]; 
         case TokenType.round_close : return ["practal-round-braces", []]; 
@@ -60,6 +61,8 @@ function semantics(type : TokenType) : [string, string[]] | undefined {
         case TokenType.latex_control_sequence: return ["practal-latex-control-sequence", []];
         case TokenType.latex_space: return ["practal-latex-space", []];
         case TokenType.latex_syntax: return ["practal-latex-syntax", []];
+        case TokenType.selector_index: return ["practal-secondary-keyword", []];
+        case TokenType.selector_label: return ["practal-label", []];
         default : assertNever(type);  //return ["practal-invalid", []];
     }
 }
@@ -79,8 +82,11 @@ function diagnose(theory : UITheory, lines : TextLines, diagnoses : Diagnosis[],
                 }
                 break;
             case ResultKind.TREE: 
-                if (result.type && result.type.type === SectionName.invalid) {
+                if (result.type && result.type.type === SectionName.invalid_term) {
                     diagnoses.push(new Diagnosis(spanOfResult(result), Severity.ERROR, "Invalid syntax."));
+                } else if (result.type && result.type.type === SectionName.error) {
+                    const msg = result.type.message ?? "Invalid syntax.";
+                    diagnoses.push(new Diagnosis(spanOfResult(result), Severity.ERROR, msg));
                 } else {
                     if (result.type !== undefined) {
                         for (const child of result.children) diag(child);
@@ -97,10 +103,10 @@ function diagnose(theory : UITheory, lines : TextLines, diagnoses : Diagnosis[],
 function tokenizer(lines : TextLines) : [Iterable<Token<TokenType>>, Iterable<Diagnosis>] {
 
     //const termParser = generateCustomGrammar(thy).parser;
-    const parsed1 = practaliumDP({theory : UITheory.mk(lines), varParser : undefined, termParser : undefined}, lines, 0, 0);
+    const parsed1 = practaliumDP({theory : UITheory.mk(lines), varParser : undefined, maximum_valid : undefined, maximum_invalid : undefined}, lines, 0, 0);
     if (parsed1 === undefined) return [[], []];
     const termParser = generateCustomGrammar(parsed1.state.theory);
-    const parsed = practaliumDP({theory : UITheory.mk(lines), varParser : undefined, termParser : termParser.parser}, lines, 0, 0);
+    const parsed = practaliumDP({theory : UITheory.mk(lines), varParser : undefined, maximum_valid : termParser.maximum_valid, maximum_invalid : termParser.maximum_invalid}, lines, 0, 0);
     if (parsed === undefined) return [[], []];
     const tokens = [...iterateTokensDeep(parsed.result)];
     const diagnoses = parsed.state.theory.diagnoses;

@@ -1,14 +1,15 @@
 import { join } from "path";
 import { SemanticTokens } from "vscode";
-import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, lookaheadInLineDP, lazyDP, optDP, orDP, rep1DP, repDP, Section, sectionDP, seqDP, textOfToken, tokenDP, modifyDP, useDP, newlineDP, modifyResultDP, Token, iterateTokensFlat, printResult, Result, ResultKind, iterateContentSections, iterateResultsDeep, Tree, endOf, dependentSeqDP, iterateContentTokens, chainDP, joinResults } from "./pyramids/deterministic_parser";
-import { alphaNumL, anyCharL, charL, charsL, firstL, hyphenL, letterL, Lexer, literalL, lookaheadL, nonspaceL, nonspaces1L, nonspacesL, optL, rep1L, repL, seqL, spaces1L, underscoreL } from "./pyramids/lexer";
+import { debugDP, DetParser, DPResult, emptyDP, enumDP, iterateTokensDeep, lookaheadInLineDP, lazyDP, optDP, orDP, rep1DP, repDP, Section, sectionDP, seqDP, textOfToken, tokenDP, modifyDP, useDP, newlineDP, modifyResultDP, Token, iterateTokensFlat, printResult, Result, ResultKind, iterateContentSections, iterateResultsDeep, Tree, endOf, dependentSeqDP, iterateContentTokens, chainDP, joinResults, joinDP } from "./pyramids/deterministic_parser";
+import { alphaNumL, anyCharL, charL, charsL, digitL, firstL, hyphenL, letterL, Lexer, literalL, lookaheadL, nonspaceL, nonspaces1L, nonspacesL, optL, rep1L, repL, seqL, spaces1L, underscoreL } from "./pyramids/lexer";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
-import { absoluteSpan, TextLines } from "./pyramids/textlines";
+import { absoluteSpan, absoluteSpanStr, TextLines } from "./pyramids/textlines";
 import { Handle, Head, NameDecl, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, UITheory } from "./uitheory";
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
 import { assertTrue, force, internalError, notImplemented, Printer } from "./things/utils";
-import { constructUITermFromResult, mkUIRule, mkUITemplate, mkUIVar, printUITerm, UIProof, UIRule, UITemplate, UITerm, UITermAbstrApp, UITermVarApp, UIVar, validateUITerm, VarName } from "./uiterm";
+import { constructUITermFromResult, mkUIRule, mkUITemplate, mkUIVar, printUITerm, UIProof, UIRule, UITemplate, UITerm, UITermAbstrApp, UITermVarApp, UIThmExpr, UIThmExprLabel, UIVar, validateUITerm, VarName } from "./uiterm";
+import { boundVarP, freeVarP } from "./term_parser";
 
 export enum TokenType {
     module_name,
@@ -56,6 +57,9 @@ export enum TokenType {
     sorry,
     qed,
     note,
+    thm_expr_punctuation,
+    selector_label,
+    selector_index,
     invalid // must be last for ALL_TOKEN_TYPES to be defined correctly
 }
 
@@ -83,7 +87,7 @@ export enum SectionName {
     term,
     custom,
     params,
-    invalid,
+    invalid_term,
 
     // Templates and Rules and Proofs
     template,
@@ -96,18 +100,18 @@ export enum SectionName {
 
 }
 
-export type SectionData = SectionDataNone | SectionDataTerm | SectionDataTerms | SectionDataCustom | SectionDataTemplate | 
-    SectionDataRule | SectionDataPremise | SectionDataConclusion | SectionDataProof 
+export type SectionData = SectionDataNone | SectionDataError | SectionDataTerm | SectionDataTerms | SectionDataCustom | SectionDataTemplate | 
+    SectionDataRule | SectionDataPremise | SectionDataConclusion | SectionDataProof | SectionDataThmExpr
 
 export type SectionName_DataNone = 
-    SectionName.theory | SectionName.declaration | SectionName.comment | SectionName.error |
+    SectionName.theory | SectionName.declaration | SectionName.comment |
     SectionName.syntax | SectionName.syntactic_category | SectionName.inline_latex | SectionName.display_latex |
     SectionName.newline | SectionName.definition | SectionName.sorry
 
 export type SectionName_Term = 
     SectionName.operation_app | SectionName.operator_app | SectionName.value | 
     SectionName.var_app | SectionName.var |
-    SectionName.brackets | SectionName.term | SectionName.invalid 
+    SectionName.brackets | SectionName.term | SectionName.invalid_term 
 
 export type SectionName_Terms = SectionName.params;
 
@@ -117,6 +121,18 @@ export type SectionDataNone = {
 
 export function SectionDataNone(ty : SectionName_DataNone) : SectionDataNone {
     return { type : ty };
+}
+
+export type SectionDataError = {
+    type : SectionName.error,
+    message : string | undefined
+}
+
+export function SectionDataError(message? : string) : SectionDataError {
+    return {
+        type : SectionName.error,
+        message : message
+    };
 }
 
 export type SectionDataTerm = {
@@ -213,6 +229,17 @@ export function SectionDataProof(label : SpanStr | undefined, proof : UIProof | 
     return { type : SectionName.proof, label : label, proof : proof };
 }
 
+export type SectionDataThmExpr = {
+    type : SectionName.thm_expr,
+    expr : UIThmExpr
+}
+
+export function SectionDataThmExpr(expr : UIThmExpr) : SectionDataThmExpr {
+    return {
+        type : SectionName.thm_expr,
+        expr : expr
+    };
+}
 
 export enum RuleKind {
     axiom,
@@ -242,7 +269,9 @@ export type ParseState = {
 
     varParser : P | undefined
 
-    termParser : P | undefined
+    maximum_valid : P | undefined
+
+    maximum_invalid : P | undefined
 
 }
 
@@ -252,10 +281,13 @@ export type P = DetParser<ParseState, SectionData, TokenType>
 export type S = Section<ParseState, SectionData, TokenType>
 export type R = DPResult<ParseState, SectionData, TokenType>
 
+export function nameOfTokenType(type : TokenType) : string {
+    return TokenType[type];
+}
+
 export function printPractalResult(lines : TextLines, result : Result<SectionData, TokenType>, print : Printer = debug) {
     function nameOfS(type : SectionData) : string { return SectionName[type.type]; }
-    function nameOfT(type : TokenType) : string { return TokenType[type]; }
-    printResult(print, nameOfS, nameOfT, lines, result);
+    printResult(print, nameOfS, nameOfTokenType, lines, result);
 }
 
 function isIdLetter(c : string) : boolean {
@@ -295,14 +327,53 @@ const squareCloseDP : P = tokenDP(literalL("]"), TokenType.square_close);
 const dotDP : P = tokenDP(literalL("."), TokenType.dot);
 const commaDP : P = tokenDP(literalL(","), TokenType.comma);
 
+function errorDP(parser : P, msg? : string) : P {
+    return modifyResultDP(parser, (lines, result) => {
+        if (result === undefined) return undefined;
+        const r = joinResults([result.result], SectionDataError(msg));
+        return { state : result.state, result : r };
+    });
+}
+
+function totalTermDP(binders : VarName[] = []) : P {
+    return useDP((lines, state) => totalTermOfDP(lines, binders, state.maximum_invalid));
+}
 
 function termDP(binders : VarName[] = []) : P {
-    return useDP((lines, state) => totalTermOfDP(lines, binders, state.termParser));
+    return useDP((lines, state) => termOfDP(lines, binders, state.maximum_valid, state.maximum_invalid));
 }
 
 const boundArgsDP : P = seqDP(boundVariableDP, repDP(optWhitespaceDP, boundVariableDP), optSpacesDP, dotDP);
 
-const templateDP : P = chainDP(optDP(boundArgsDP, spacesDP), 
+const totalTemplateDP : P = chainDP(optDP(boundArgsDP, spacesDP), 
+    (lines : TextLines, state : ParseState, result : Result<SectionData, TokenType>) => {
+        const boundVars = iterateContentTokens(result, t => t === TokenType.bound_variable);
+        const varnames : VarName[] = [];
+        const uivars : UIVar[] = [];
+        for (const b of boundVars) {
+            const name = textOfToken(lines, b);
+            if (varnames.indexOf(name) >= 0) {
+                const span = absoluteSpan(lines, spanOfResult(b));
+                state.theory.error(span, "Duplicate binder '" + name + "'.");
+            } else {
+                varnames.push(name);
+                uivars.push(mkUIVar(lines, b));
+            }
+        }
+        return modifyResultDP(totalTermDP(varnames), (lines : TextLines, term_result : DPResult<ParseState, SectionData, TokenType>) => {
+            if (term_result === undefined) internalError("Term parser should be designed to always succeed.");
+            if (term_result.result.kind === ResultKind.TREE && term_result.result.type?.type === SectionName.term) {
+                const term = term_result.result.type.term;
+                if (term !== undefined) {
+                    const template = mkUITemplate(uivars, term);
+                    return { state : term_result.state, result : joinResults([result, term_result.result], SectionDataTemplate(template)) };
+                }
+            }
+            return { state : term_result.state, result : joinResults([result, term_result.result], SectionDataTemplate()) };
+        });
+    });
+
+    const templateDP : P = chainDP(optDP(boundArgsDP, spacesDP), 
     (lines : TextLines, state : ParseState, result : Result<SectionData, TokenType>) => {
         const boundVars = iterateContentTokens(result, t => t === TokenType.bound_variable);
         const varnames : VarName[] = [];
@@ -328,12 +399,86 @@ const templateDP : P = chainDP(optDP(boundArgsDP, spacesDP),
             }
             return { state : term_result.state, result : joinResults([result, term_result.result], SectionDataTemplate()) };
         });
-    });
+    });    
 
-const thmExprLabelDP : P = tokenDP(identifierL, TokenType.label_expr)
+const thmExprLabelDP : P = modifyResultDP(tokenDP(identifierL, TokenType.label_expr), (lines, result) => {
+    if (result === undefined) return undefined;
+    const token = result.result as Token<TokenType>;
+    const label = absoluteSpanStr(lines, SpanStr.fromToken(lines, token));
+    const expr : UIThmExpr = UIThmExprLabel(label);
+    return { state : result.state, result: joinResults([result.result], SectionDataThmExpr(expr)) };
+});
+
+function skipWhileDP(message : string, across_lines : boolean, start_ok : boolean, ignore : (c : string) => boolean, pred : (c : string) => boolean) : P {
+    function parse(state : ParseState, lines : TextLines, line : number, offset : number) : DPResult<ParseState, SectionData, TokenType>
+    {
+        let startLine = line;
+        let startOffset = offset;
+        let ok = start_ok;
+        const lineCount = lines.lineCount;
+        function finish() : DPResult<ParseState, SectionData, TokenType> {
+            if (ok) {
+                return { state : state, result: joinResults([], undefined, [startLine, startOffset], [line, offset]) };
+            } else {
+                return { state : state, result: joinResults([], SectionDataError(message), [startLine, startOffset], [line, offset]) };
+            }
+        }
+        while (line < lineCount) {
+            let text = lines.lineAt(line);
+            while (offset < text.length) {
+                const c = text.charAt(offset);
+                if (ignore(c)) {
+                    // do nothing
+                } else if (pred(c)) {
+                    ok = false;
+                } else {
+                    return finish();
+                }
+                offset += c.length;
+            }
+            if (!across_lines) return finish();
+            line += 1;
+            offset = 0;
+        }
+        return finish();
+    }
+    return parse;
+}
+
+const thmExprOpen : P = tokenDP(literalL("["), TokenType.thm_expr_punctuation);
+const thmExprClose : P = orDP(tokenDP(literalL("]"), TokenType.thm_expr_punctuation), emptyDP(SectionDataError("Closing bracket ']' expected.")));
+const thmExprComma : P = tokenDP(literalL(","), TokenType.thm_expr_punctuation);
+const thmExprDot : P = tokenDP(literalL("."), TokenType.thm_expr_punctuation);
+const substAssignL : Lexer = firstL(literalL(":="), literalL("≔"));
+const thmExprSubstOp : P = tokenDP(substAssignL, TokenType.thm_expr_punctuation);
+const thmExprApplyOp : P = tokenDP(literalL(":"), TokenType.thm_expr_punctuation);
+const thmExprSelectorDP : P = orDP(tokenDP(rep1L(digitL), TokenType.selector_index), tokenDP(identifierL, TokenType.selector_label));
+const thmExprSingleSubstDP : P = seqDP(freeVariableDP, optWhitespaceDP, thmExprSubstOp, optWhitespaceDP, thmExprSingleRequired("Template or term expected.", templateDP));
+function thmExprSingleSkip(msg : string, start_ok : boolean) : P {
+    return skipWhileDP(msg, true, start_ok, (c) => c === " ", (c) => c !== "," && c !== "]");
+}
+function thmExprSingleRequired(msg : string, p : P) : P {
+    return orDP(seqDP(p, thmExprSingleSkip("Comma ',' or closing bracket ']' expected.", true)), thmExprSingleSkip(msg, false));
+}
+const thmExprApplyBindersDP : P = optDP(rep1DP(freeVariableDP, optWhitespaceDP), thmExprDot, optWhitespaceDP);
+const thmExprSingleApplyDP : P = seqDP(optDP(thmExprSelectorDP, optSpacesDP, thmExprApplyOp, optWhitespaceDP), 
+    thmExprSingleRequired("Theorem expression expected", seqDP(thmExprApplyBindersDP, thmExprDP())));
+
+const thmExprSingleSubstApplyDP = orDP(thmExprSingleSubstDP, thmExprSingleApplyDP);
+const thmExprSubstApplyDP : P = seqDP(thmExprOpen, optWhitespaceDP,  optDP(joinDP(thmExprSingleSubstApplyDP, seqDP(optWhitespaceDP, thmExprComma, optWhitespaceDP)), optWhitespaceDP),  thmExprClose);
+
+
+const thmExprSelectDP : P = seqDP(thmExprDot, thmExprSelectorDP);
+/**
+ * E => E {x -> y} [th1, th2] {y -> w}.cool 
+ */
+
+
+//const thmExprSubstDP : P = emptyDP();
 
 function thmExprDP() : P {
-    return optDP(thmExprLabelDP);
+    //return thmExprLabelDP;
+    return lazyDP(() => seqDP(thmExprLabelDP, repDP(orDP(thmExprSelectDP, seqDP(optWhitespaceDP,thmExprSubstApplyDP)))));
 }
 
 function allOfDP(type : TokenType) : P {
@@ -350,7 +495,7 @@ function totalOfDP(parser?: P) : P {
 
 const markInvalidDP : P = orDP(
     seqDP(repDP(spacesDP), tokenDP(nonspaces1L, TokenType.invalid), allOfDP(TokenType.invalid)),
-    seqDP(emptyDP(SectionDataTerm(SectionName.invalid)), repDP(spacesDP)));
+    seqDP(emptyDP(SectionDataTerm(SectionName.invalid_term)), repDP(spacesDP)));
 
 function totalTermOfDP(lines : TextLines, binders : VarName[] = [], parser?: P) : P {
     if (parser === undefined) return allOfDP(TokenType.invalid);
@@ -359,7 +504,7 @@ function totalTermOfDP(lines : TextLines, binders : VarName[] = [], parser?: P) 
         const termDPResult = termParser(state, lines, line, offset);
         if (termDPResult === undefined) return markInvalidDP(state, lines, line, offset);
         const termResult = termDPResult.result;
-        if (termResult.kind === ResultKind.TREE && termResult.type?.type === SectionName.invalid) {
+        if (termResult.kind === ResultKind.TREE && termResult.type?.type === SectionName.invalid_term) {
             const invalidDPResult = force(markInvalidDP(termDPResult.state, lines, termResult.endLine, termResult.endOffsetExclusive));
             const [endLine, endOffset] = endOf(invalidDPResult.result);
             const tree : Tree<SectionData, TokenType> = {
@@ -378,6 +523,38 @@ function totalTermOfDP(lines : TextLines, binders : VarName[] = [], parser?: P) 
             if (uiterm) validateUITerm(state.theory, lines, uiterm, binders);
             return termDPResult;
         }
+    }
+    return parse;
+}
+
+function termOfDP(lines : TextLines, binders : VarName[] = [], parser?: P, fallback?: P) : P {
+    if (parser === undefined) return allOfDP(TokenType.invalid);
+    if (fallback === undefined) internalError();
+    const termParser = parser;
+    const fallbackParser = fallback;
+    function failed(result : DPResult<ParseState, SectionData, TokenType>) : boolean {
+        if (result === undefined) return true;
+        const r = result.result;
+        if (r.kind === ResultKind.TREE && r.type?.type === SectionName.invalid_term) return true;
+        return false;
+    }
+    function parse(state : ParseState, lines : TextLines, line : number, offset : number) : DPResult<ParseState, SectionData, TokenType> {
+        let termDPResult = termParser(state, lines, line, offset);
+        if (failed(termDPResult)) {
+            termDPResult = fallbackParser(state, lines, line, offset);
+            if (termDPResult === undefined) {
+                return { state : state, result : joinResults([], SectionDataTerm(SectionName.invalid_term), [line, offset], [line, offset]) };
+            }
+            const termResult = termDPResult.result;
+            const uiterm = constructUITermFromResult(state.theory, lines, termResult);
+            termResult.type = SectionDataTerm(SectionName.invalid_term, uiterm);
+            return termDPResult;
+        }
+        const termResult = force(termDPResult).result;
+        const uiterm = constructUITermFromResult(state.theory, lines, termResult);
+        termResult.type = SectionDataTerm(SectionName.term, uiterm);
+        if (uiterm) validateUITerm(state.theory, lines, uiterm, binders);
+        return termDPResult;
     }
     return parse;
 }
@@ -411,9 +588,8 @@ const commentDP : P = tokenDP(literalL("%"), TokenType.comment);
 const commentBodyDP : P = allOfDP(TokenType.comment);
 const commentSection : S = { bullet: commentDP, body: commentBodyDP, type: SectionDataNone(SectionName.comment) };
 
-const errorDP : P = emptyDP();
 const errorBodyDP : P = anyOfDP(TokenType.invalid);
-const errorSection : S = { bullet: errorDP, body: errorBodyDP, type: SectionDataNone(SectionName.error) };
+const errorSection : S = { bullet: emptyDP(), body: errorBodyDP, type: SectionDataError("Invalid section.") };
 
 function varParserDP(head : Head) : P {
     const frees : Set<string> = new Set();
@@ -496,7 +672,7 @@ function addSyntacticConstraint(lines : TextLines, result : R) : R {
                     loose = false;
                     break;
                 default:
-                    throw new Error("Unexpected token of type: " + TokenType[token.type]);
+                    throw new Error("Unexpected token of type: " + nameOfTokenType(token.type));
             }
         }
     }
@@ -628,7 +804,7 @@ const inlineLatexSection : S = { bullet : inlineLatexBulletDP, body : latexSpec,
 const displayLatexSection : S = { bullet : displayLatexBulletDP, body : latexSpec, type : SectionDataNone(SectionName.display_latex) };
 
 const definitionBulletDP : P = seqDP(tokenDP(literalL("="), TokenType.primary_keyword),  lookaheadInLineDP(nonspaceL, false));
-const definitionSection : S = { bullet : definitionBulletDP, body : termDP(), type : SectionDataNone(SectionName.definition) };
+const definitionSection : S = { bullet : definitionBulletDP, body : totalTermDP(), type : SectionDataNone(SectionName.definition) };
 
 function varParserOf(lines : TextLines, state : ParseState) : P {
     return force(state.varParser);
@@ -810,16 +986,16 @@ function processNote(lines : TextLines, result : R) : R {
 }
 
 const sorrySection : S = { bullet : seqDP(tokenDP(literalL("sorry"), TokenType.sorry)), body : totalOfDP(), type : SectionDataNone(SectionName.sorry) };
-const qedSection : S = { bullet : seqDP(tokenDP(literalL("qed"), TokenType.qed)), body : totalOfDP(thmExprDP()), type : null, process: processQED };
+const qedSection : S = { bullet : seqDP(tokenDP(literalL("qed"), TokenType.qed)), body : totalOfDP(optDP(thmExprDP())), type : null, process: processQED };
 const proofSection : S = { bullet : seqDP(tokenDP(literalL("proof"), TokenType.proof), optDP(spacesDP, labelRefDP)), body : proofDP(), type : null, process: processProof }; 
-const noteSection : S = { bullet : seqDP(tokenDP(literalL("note"), TokenType.note), optDP(spacesDP, labelRefDP)), body : totalOfDP(thmExprDP()), type : null, process: processNote }; 
+const noteSection : S = { bullet : seqDP(tokenDP(literalL("note"), TokenType.note), optDP(spacesDP, labelRefDP)), body : totalOfDP(optDP(thmExprDP())), type : null, process: processNote }; 
 
 function proofDP() : P {
     return lazyDP(() => totalOfDP(enumDP(commentSection, sorrySection, qedSection, noteSection, lemmaSection, errorSection)));
 }
 
-const rulePremiseSection : S = { bullet : seqDP(tokenDP(literalL("premise"), TokenType.premise), optDP(spacesDP, labelDP)), body : templateDP, type : null, process: processPremise};
-const ruleInferSection : S = { bullet : optDP(seqDP(tokenDP(literalL("infer"), TokenType.infer), optDP(spacesDP, labelDP))), body : termDP(), type : null, process: processConclusion };
+const rulePremiseSection : S = { bullet : seqDP(tokenDP(literalL("premise"), TokenType.premise), optDP(spacesDP, labelDP)), body : totalTemplateDP, type : null, process: processPremise};
+const ruleInferSection : S = { bullet : optDP(seqDP(tokenDP(literalL("infer"), TokenType.infer), optDP(spacesDP, labelDP))), body : totalTermDP(), type : null, process: processConclusion };
 
 
 function ruleDP(k : RuleKind, ...sections : S[]) : P { 

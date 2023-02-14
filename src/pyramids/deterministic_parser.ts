@@ -709,6 +709,10 @@ export function useDP<State, S, T>(construct : (lines : TextLines, state : State
     return parse;
 }
 
+export function joinDP<State, S, T>(elemDP : DetParser<State, S, T>, jointDP : DetParser<State, S, T>) : DetParser<State, S, T> {
+    return seqDP(elemDP, repDP(jointDP, elemDP));
+}
+
 export function lazyDP<State, S, T>(parser : () => DetParser<State, S, T>) : DetParser<State, S, T> {
 
     function parse(state : State, lines : TextLines, line : number, offset : number) : DPResult<State, S, T> { 

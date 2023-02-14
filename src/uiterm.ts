@@ -154,6 +154,13 @@ export type UIThmExprLabel = {
     label : SpanStr 
 }
 
+export function UIThmExprLabel(label : SpanStr) : UIThmExprLabel {
+    return { 
+        kind : UIThmExprKind.Label,
+        label : label
+    };
+}
+
 export type UIThmExprSubst = {
     kind : UIThmExprKind.Subst
 }
@@ -326,7 +333,7 @@ export function constructUITermFromResult(theory : UITheory, lines : TextLines, 
                     case SectionName.term: return constructMultiple(result.children);
                     case SectionName.params: return constructMultiple(result.children);
                     case SectionName.brackets: return constructMultiple(result.children);
-                    case SectionName.invalid: return constructMultiple(result.children);
+                    case SectionName.invalid_term: return constructMultiple(result.children);
                     case SectionName.value:
                         for (const token of iterateTokensDeep(result)) {
                             if (token.type === TokenType.value_id || token.type === TokenType.unknown_id) {

@@ -1,5 +1,5 @@
 import { Lexer, spacesL } from "./lexer";
-import { Span } from "./span";
+import { Span, SpanStr } from "./span";
 
 export interface TextLines {
     lineCount : number
@@ -11,6 +11,11 @@ export function absoluteSpan(lines : TextLines, span : Span) : Span {
     const [l1, o1] = lines.absolute(span.startLine, span.startOffsetInclusive);
     const [l2, o2] = lines.absolute(span.endLine, span.endOffsetExclusive);
     return new Span(l1, o1, l2, o2);
+}
+
+export function absoluteSpanStr(lines : TextLines, spanstr : SpanStr) : SpanStr {
+    const span = absoluteSpan(lines, spanstr.span);
+    return new SpanStr(span, spanstr.str);
 }
 
 export function isValidPosition(lines : TextLines, line : number, offset : number) : boolean {
@@ -207,3 +212,53 @@ export function cutoffAfterIndentation(source : TextLines, line : number, skip :
     }   
     return source; 
 } 
+
+export class TextLinesUntil implements TextLines {
+
+    source : TextLines
+
+    endLine : number  
+
+    lastLine : string
+
+    /** Same as lines.length */
+    lineCount : number
+
+    constructor(source : TextLines, endLine : number, endOffset : number) {
+        if (endLine >= source.lineCount || endLine < 0) throw new Error("TextLinesUntil: endLine is out of range");
+        this.source = source;
+        this.endLine = endLine;
+        let lastLine = source.lineAt(endLine);
+        if (lastLine.length <= endOffset) {
+            this.lastLine = lastLine;
+        } else {
+            this.lastLine = lastLine.slice(0, endOffset);
+        }
+        this.lineCount = endLine + 1;
+    }
+
+    log(print : (text : string) => void = console.log) {
+        print(`[TextWindowUntil] endLine ${this.endLine} out of ${this.source.lineCount} lines:`);
+        for (let i = 0; i < this.lineCount; i ++) {
+            print(`  ${i}) '${this.lineAt(i)}'`);
+        }
+    }
+
+    lineAt(line: number): string {
+        if (line < this.endLine) return this.source.lineAt(line); 
+        else if (line === this.endLine) return this.lastLine;
+        else throw new Error("Nnvalid line number " + line + ".");
+    }   
+    
+    absolute(line: number, offset: number): [number, number] {
+        return this.source.absolute(line, offset);
+    }
+
+}
+
+export function textlinesUntil(lines : TextLines, endLine : number, endOffset : number) : TextLines {
+    if (endLine >= lines.lineCount) return lines;
+    return new TextLinesUntil(lines, endLine, endOffset);
+}
+
+

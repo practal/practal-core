@@ -1,7 +1,7 @@
 import { int, nat } from "../things/primitives";
 import { assertNever, force, internalError, notImplemented } from "../things/utils";
 import { DetParser, DPResult, endLineOf, endOf, eofDP, Result, ResultKind, startLineOf, Tree } from "./deterministic_parser";
-import { TextLines } from "./textlines";
+import { TextLines, textlinesUntil } from "./textlines";
 import { ActionPlan, ActionPlanKind, planActions, planContainsError, printActionPlan, printActions } from "./actionplan";
 import { convertExprGrammar, ExprGrammar } from "./expr_grammar";
 import { Sym } from "./grammar_symbols";
@@ -69,7 +69,7 @@ export function orGreedyTerminalParsers<State, S, T>(parsers : TerminalParsers<S
 }
 
 export function lrDP<State, S, T>(exprGrammar : ExprGrammar, nonterminal_labels : [Sym, S][], terminal_parsers : TerminalParsers<State, S, T>, invalid? : S | null) : 
-    { parser : DetParser<State, S, T>, conflicts : Set<Sym | null> } 
+    { maximum_valid : DetParser<State, S, T>, maximum_invalid : DetParser<State, S, T>, conflicts : Set<Sym | null> } 
 {
     const G = convertExprGrammar(exprGrammar);
     const X = extendGrammar(G.grammar);
@@ -83,11 +83,16 @@ export function lrDP<State, S, T>(exprGrammar : ExprGrammar, nonterminal_labels 
     //console.log("Number of states is " + lr1.states.length + ".");
     //let withConflicts = 0
     const nextTerminals : Set<int>[] = [];
+    const finalStates : Set<int> = new Set();
     for (let i = 0; i < lr1.states.length; i++) {
         const actions = computeActionsOfState(X, lr1, i);
         const terminals = nextTerminalsOf(actions);
         nextTerminals.push(terminals);
+        for (const t of terminals) {
+            if (G.symbols.is_final(t)) finalStates.add(i);
+        }
     }
+    //debug("final states: " + [...finalStates].join(", "));
     const plans : ActionPlan[] = [];
     const symbolsWithConflicts : Set<Sym | null> = new Set();
     for (let i = 0; i < lr1.states.length; i++) {
@@ -180,118 +185,132 @@ export function lrDP<State, S, T>(exprGrammar : ExprGrammar, nonterminal_labels 
         nonterminals.set(sym, n);
     }
 
-    function parse(state : State, lines : TextLines, line : number, offset : number) : DPResult<State, S, T> {
-        const startLine = line;
-        const startOffset = offset;
-        const lr_states : int[] = [0];
-        const results : Result<S, T>[] = [];
-        function failed() : DPResult<State, S, T> {
-            if (invalid === undefined) return undefined;
-            const tree : Tree<S, T> = {
-                kind: ResultKind.TREE,
-                type: invalid,
-                startLine: startLine,
-                startOffsetInclusive: startOffset,
-                endLine: line,
-                endOffsetExclusive: offset,
-                children: results
-            };            
-            return { state : state, result : tree };
-        }
-        while (true) {
-            const lr_state = lr_states[lr_states.length - 1];
-            const plan = plans[lr_state];
-            const executionResult = executePlan(state, lines, line, offset, plan);
-            if (executionResult === undefined) {
-                /*debug("executionResult is undefined");
-                debug("----------------------------");
-                printActionPlan(G.symbols, plan);*/
-                return failed();
-            }
-            const [tokens, new_state, action] = executionResult;
-            state = new_state;
-            const kind = action.kind;
-            switch (kind) {
-                case ActionKind.ACCEPT:
-                    //console.log("ACCEPT");
-                    if (results.length === 1) {
-                        return { state : state, result : results[0] };
-                    } else {
-                        internalError("Unexpected result stack containing " + results.length + " results.");
-                    }
-                case ActionKind.REDUCE: {
-                    //console.log("REDUCE " + action.rule);
-                    const rule = rules[action.rule];
-                    const L = rule.rhs.length;
-                    if (lr_states.length > L) {
-                        const top = lr_states[lr_states.length - L - 1];
-                        const goto_lr_state = goto(top, rule.lhs);
-                        if (goto_lr_state === undefined) return failed();
-                        const rhs = results.splice(results.length - L, L);
-                        const nonterminal = G.symbols.symsOf(rule.lhs);
-                        if (nonterminal === undefined || nonterminal.length !== 1) {
-                            internalError("Could not resolve handle to nonterminal.");
-                        }
-                        const s = nonterminals.get(nonterminal[0]) ?? null;
-                        let startLine = line;
-                        let startOffsetInclusive = offset;
-                        let endLine = line;
-                        let endOffsetExclusive = offset;
-                        if (rhs.length > 0) {
-                            startLine = startLineOf(rhs[0]);
-                            startOffsetInclusive = rhs[0].startOffsetInclusive;
-                            [endLine, endOffsetExclusive] = endOf(rhs[rhs.length - 1]);
-                        }
-                        //if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(endOffsetExclusive)) throw new Error("!!");
-                        const tree : Tree<S, T> = {
-                            kind: ResultKind.TREE,
-                            type: s,
-                            startLine: startLine,
-                            startOffsetInclusive: startOffsetInclusive,
-                            endLine: endLine,
-                            endOffsetExclusive: endOffsetExclusive,
-                            children: rhs
-                        };
-                        results.push(tree);
-                        lr_states.splice(lr_states.length - L, L, goto_lr_state);
-                        //console.log("GOTO " + goto_lr_state);
-                    } else {
-                        internalError("Stack is not large enough for reduction.");
-                    }
-                    break;
+    function mkParser(maximum_valid : boolean) : DetParser<State, S, T> {
+        function parse(state : State, lines : TextLines, line : number, offset : number) : DPResult<State, S, T> {
+            const startLine = line;
+            const startOffset = offset;
+            const startState = state;
+            const lr_states : int[] = [0];
+            const results : Result<S, T>[] = [];
+            let last_valid : [number, number] | undefined = undefined;
+            function failed() : DPResult<State, S, T> {
+                if (maximum_valid && last_valid !== undefined) {
+                    const linesUntil = textlinesUntil(lines, last_valid[0], last_valid[1]);
+                    //debug("parsing failed at " + line + " / " + offset + ", reset to " + last_valid[0] + " / " + last_valid[1]);
+                    return mkParser(false)(startState, linesUntil, startLine, startOffset);
                 }
-                case ActionKind.SHIFT: {
-                    //console.log("SHIFT " + action.state);
-                    lr_states.push(action.state);
-                    if (tokens.length === 1) {
-                        results.push(tokens[0]);
-                        [line, offset] = endOf(tokens[0]);
-                    } else {
-                        let endLine = line;
-                        let endOffsetExclusive = offset;
-                        if (tokens.length > 0) {
-                            [endLine, endOffsetExclusive] = endOf(tokens[tokens.length - 1]);
-                        }
-                        //if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(endOffsetExclusive)) throw new Error("!!");
-                        const tree : Tree<S, T> = {
-                            kind: ResultKind.TREE,
-                            type: null,
-                            startLine: line,
-                            startOffsetInclusive: offset,
-                            endLine: endLine,
-                            endOffsetExclusive: endOffsetExclusive,
-                            children: tokens
-                        };   
-                        results.push(tree);     
-                        line = endLine;
-                        offset = endOffsetExclusive;                
-                    }
-                    break;
-                }
-                default: assertNever(kind);
+                if (invalid === undefined) return undefined;
+                const tree : Tree<S, T> = {
+                    kind: ResultKind.TREE,
+                    type: invalid,
+                    startLine: startLine,
+                    startOffsetInclusive: startOffset,
+                    endLine: line,
+                    endOffsetExclusive: offset,
+                    children: results
+                };            
+                return { state : state, result : tree };
             }
-        }
+            while (true) {
+                const lr_state = lr_states[lr_states.length - 1];
+                if (finalStates.has(lr_state)) {
+                    last_valid = [line, offset];
+                }
+                const plan = plans[lr_state];
+                const executionResult = executePlan(state, lines, line, offset, plan);
+                if (executionResult === undefined) {
+                    /*debug("executionResult is undefined");
+                    debug("----------------------------");
+                    printActionPlan(G.symbols, plan);*/
+                    return failed();
+                }
+                const [tokens, new_state, action] = executionResult;
+                state = new_state;
+                const kind = action.kind;
+                switch (kind) {
+                    case ActionKind.ACCEPT:
+                        //console.log("ACCEPT");
+                        if (results.length === 1) {
+                            return { state : state, result : results[0] };
+                        } else {
+                            internalError("Unexpected result stack containing " + results.length + " results.");
+                        }
+                    case ActionKind.REDUCE: {
+                        //console.log("REDUCE " + action.rule);
+                        const rule = rules[action.rule];
+                        const L = rule.rhs.length;
+                        if (lr_states.length > L) {
+                            const top = lr_states[lr_states.length - L - 1];
+                            const goto_lr_state = goto(top, rule.lhs);
+                            if (goto_lr_state === undefined) return failed();
+                            const rhs = results.splice(results.length - L, L);
+                            const nonterminal = G.symbols.symsOf(rule.lhs);
+                            if (nonterminal === undefined || nonterminal.length !== 1) {
+                                internalError("Could not resolve handle to nonterminal.");
+                            }
+                            const s = nonterminals.get(nonterminal[0]) ?? null;
+                            let startLine = line;
+                            let startOffsetInclusive = offset;
+                            let endLine = line;
+                            let endOffsetExclusive = offset;
+                            if (rhs.length > 0) {
+                                startLine = startLineOf(rhs[0]);
+                                startOffsetInclusive = rhs[0].startOffsetInclusive;
+                                [endLine, endOffsetExclusive] = endOf(rhs[rhs.length - 1]);
+                            }
+                            //if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(endOffsetExclusive)) throw new Error("!!");
+                            const tree : Tree<S, T> = {
+                                kind: ResultKind.TREE,
+                                type: s,
+                                startLine: startLine,
+                                startOffsetInclusive: startOffsetInclusive,
+                                endLine: endLine,
+                                endOffsetExclusive: endOffsetExclusive,
+                                children: rhs
+                            };
+                            results.push(tree);
+                            lr_states.splice(lr_states.length - L, L, goto_lr_state);
+                            //console.log("GOTO " + goto_lr_state);
+                        } else {
+                            internalError("Stack is not large enough for reduction.");
+                        }
+                        break;
+                    }
+                    case ActionKind.SHIFT: {
+                        //console.log("SHIFT " + action.state);
+                        lr_states.push(action.state);
+                        if (tokens.length === 1) {
+                            results.push(tokens[0]);
+                            [line, offset] = endOf(tokens[0]);
+                        } else {
+                            let endLine = line;
+                            let endOffsetExclusive = offset;
+                            if (tokens.length > 0) {
+                                [endLine, endOffsetExclusive] = endOf(tokens[tokens.length - 1]);
+                            }
+                            //if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(endOffsetExclusive)) throw new Error("!!");
+                            const tree : Tree<S, T> = {
+                                kind: ResultKind.TREE,
+                                type: null,
+                                startLine: line,
+                                startOffsetInclusive: offset,
+                                endLine: endLine,
+                                endOffsetExclusive: endOffsetExclusive,
+                                children: tokens
+                            };   
+                            results.push(tree);     
+                            line = endLine;
+                            offset = endOffsetExclusive;                
+                        }
+                        break;
+                    }
+                    default: assertNever(kind);
+                }
+            }
+        }  
+        return parse;      
     }
 
-    return { parser : parse, conflicts : symbolsWithConflicts };
+
+    return { maximum_valid : mkParser(true), maximum_invalid : mkParser(false), conflicts : symbolsWithConflicts };
 }
