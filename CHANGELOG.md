@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.0.11] - 2023-02-15
+
+Added surface syntax for proofs and theorem expressions. These are not checked in any way yet.
+
+### Proof
+A proof consists of a list of proof steps, where a proof step is either
+
+* "`sorry`" : This says that the proof attempt is cancelled at this point for the time being.
+* "`qed`" : This says that the proof is concluded now, and that the proven theorem can be deduced automatically from what came before.
+* "`qed` *theorem-expression*" : This says that the proof is concluded now, and the given theorem expression proves the theorem. 
+* "`note` *label* `:` *theorem-expression*" : This saves the theorem denoted by the theorem expression under the given label for later use in the proof.
+* "`lemma` ..." : A lemma, which can be used later in the proof.
+
+### Theorem Expression
+A theorem expression is either
+
+* "*theorem-reference*" : A reference to an existing theorem.
+* "*theorem-expression*[..., P := x. x = t, ...]" : A substitution of free variables in the theorem denoted by *theorem-expression*.
+* "*theorem-expression*[..., 0 : *th-expr-0*, ..., *label* : x y. *th-expr-1* , ...]" : Instantiating the premisses  of a theorem denoted by *theorem-expression*.
+* "*theorem-expression*`.`*label*" or "*theorem-expression*`.`0": This throws away all conclusions of a theorem except the one selected via the given label or index. 
+
+
+
 ## [0.0.10] - 2023-02-12
 
 ### Added
