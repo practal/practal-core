@@ -469,15 +469,8 @@ const thmExprSubstApplyDP : P = seqDP(thmExprOpen, optWhitespaceDP,  optDP(joinD
 
 
 const thmExprSelectDP : P = seqDP(thmExprDot, thmExprSelectorDP);
-/**
- * E => E {x -> y} [th1, th2] {y -> w}.cool 
- */
-
-
-//const thmExprSubstDP : P = emptyDP();
 
 function thmExprDP() : P {
-    //return thmExprLabelDP;
     return lazyDP(() => seqDP(thmExprLabelDP, repDP(orDP(thmExprSelectDP, seqDP(optWhitespaceDP,thmExprSubstApplyDP)))));
 }
 
