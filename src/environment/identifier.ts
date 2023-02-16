@@ -1,17 +1,18 @@
 import { normalConstId } from "../identifier";
 import { identifierL } from "../term_parser";
 import { nat, string } from "../things/primitives";
-import { mkOrderAndHash } from "../things/things";
+import { assert } from "../things/test";
+import { mkOrderAndHash, Relation } from "../things/things";
 import { freeze, privateConstructor } from "../things/utils";
 
 export class Identifier {
     static #internal : boolean = false
     id : string
-    normal : string
+    #normal : string
     constructor(id : string, normal : string) {
         if (!Identifier.#internal) privateConstructor("Identifier");
         this.id = id;
-        this.normal = normal;
+        this.#normal = normal;
         freeze(this);
     }
     toString() : string {
@@ -28,15 +29,22 @@ export class Identifier {
     }
     static thing = mkOrderAndHash<Identifier>("Identifier", 
         x => x instanceof Identifier,
-        (x, y) => string.compare(x.normal, y.normal),
+        (x, y) => string.compare(x.#normal, y.#normal),
         x => string.hash(x.id));
 }
 freeze(Identifier);
 
-/*export const IdentifierT = mkOrderAndHash<Identifier>("Identifier", 
-    x => x instanceof Identifier,
-    (x, y) => string.compare(x.normal, y.normal),
-    x => string.hash(x.id));*/
+assert(() => {
+    const x = Identifier.make("for-all");
+    const y = Identifier.make("forall");
+    const z = Identifier.make("FORALL");
+    const w = Identifier.make("for--all") ?? Identifier.make("forall-") ?? Identifier.make("-forall");
+    if (x === undefined || y === undefined || z === undefined || w !== undefined) return false;
+    if (Identifier.thing.compare(x, y) !== Relation.EQUAL) return false;
+    if (Identifier.thing.compare(y, z) !== Relation.EQUAL) return false;
+    if (Identifier.thing.compare(z, x) !== Relation.EQUAL) return false;
+    return true;
+});
 
 export class Identifiers implements Iterable<Identifier> {
     static #internal : boolean = false

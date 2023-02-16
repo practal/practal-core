@@ -1,3 +1,4 @@
+import { debug } from "./debug";
 import { nat } from "./primitives";
 import { freeze } from "./utils";
 
@@ -24,11 +25,64 @@ export function sourcePosition(up : nat = 1) : string | undefined {
 }
 freeze(sourcePosition);
 
-function cool() {
-    const s = sourcePosition();
-    console.log("source position: " + s);
+export type Test = () => boolean
+
+let tests : [string | undefined, string | undefined, Test][] = [];
+let missed = 0;
+
+let tests_are_enabled = false;
+
+export function enableTests() {
+    tests_are_enabled = true;
 }
+freeze(enableTests);
 
-cool();
+export function disableTests() {
+    tests_are_enabled = false;
+}
+freeze(disableTests);
 
-console.log("compare = " + (Number.NaN === Number.NaN));
+export function assert(test : Test, descr? : string) {
+    if (tests_are_enabled) {
+        const pos = sourcePosition(2);
+        tests.push([pos, descr, test]);
+    } else {
+        missed += 1;
+    }
+}
+freeze(assert);
+
+export function runTests() {
+    debug("There are " + tests.length + " tests to run.");
+    debug("------------------------------------------------");
+    let succeeded = 0;
+    let failed = 0;
+    let crashed = 0;
+    for (const t of tests) {
+        const [pos, descr, test] = t;
+        try {
+            if (test()) {
+                succeeded += 1;
+            } else {
+                failed += 1;
+                const name = descr ? "'" + descr + "' " : "";
+                debug("Assertion "+name+"failed at '" + pos + "'.");
+            }
+        } catch {
+            crashed += 1;
+            const name = descr ? "'" + descr + "' " : "";
+            debug("Assertion " + name + "crashed at '" + pos + "'.");
+        }
+    }
+    debug("------------------------------------------------");
+    if (crashed === 0 && failed === 0 && succeeded === tests.length) {
+        debug("All " + succeeded + " tests concluded successfully.");
+    } else {
+        if (crashed > 0) debug("There were " + crashed + " crashes.");
+        if (failed > 0) debug("There were " + failed + " failed assertions.");
+        if (succeeded > 0) debug("Out of " + tests.length + " tests, " + succeeded + " succeeded.");
+    }
+    if (missed > 0) debug("!!! Because tests were disabled, " + missed + " assertions have been missed.");
+    debug("");
+}
+freeze(runTests);

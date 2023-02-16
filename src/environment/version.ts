@@ -4,8 +4,9 @@ import { createTextLines } from "../pyramids/textlines";
 import { identifierL } from "../term_parser";
 import { arrayCompare, arrayCompareLexicographically, arrayCompareLexicographicallyZ, arrayHash, ArrayOrder } from "../things/array";
 import { combineHashes, nat } from "../things/primitives";
+import { assert } from "../things/test";
 import { mkOrderAndHash, Relation } from "../things/things";
-import { freeze, notImplemented, privateConstructor } from "../things/utils";
+import { freeze, internalError, notImplemented, privateConstructor } from "../things/utils";
 import { Identifier } from "./identifier";
 
 enum Token {
@@ -113,3 +114,24 @@ export class Version {
     );
 
 }
+
+assert(() => {
+    const v1 = Version.make("1.2-pre-alpha");
+    const v2 = Version.make("1.2-pre-alpha.10");
+    const v3 = Version.make("1.2-pre-alpha.01");
+    if (v1 === undefined || v2 === undefined || v3 !== undefined) return false;
+    if (Version.thing.compare(v1, v2) !== Relation.LESS) return false;
+    if (Version.thing.compare(v2, v1) !== Relation.GREATER) return false;
+    return true;
+});
+
+assert(() => {
+    const v1 = Version.make("1.2-pre-alpha");
+    const v2 = Version.make("1.2.0-pre-alpha+42");
+    if (v1 === undefined || v2 === undefined) return false;
+    if (Version.thing.compare(v1, v2) !== Relation.EQUAL) return false;
+    if (Version.thing.compare(v2, v1) !== Relation.EQUAL) return false;
+    if (v1.core.length !== 2 || v1.core[0] !== 1 || v1.core[1] !== 2) return false;
+    if (v2.core.length !== 3 || v2.core[0] !== 1 || v2.core[1] !== 2 || v2.core[2] !== 0) return false;
+    return true;
+});

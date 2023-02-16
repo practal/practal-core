@@ -1,10 +1,11 @@
-import { iterateTokensDeep, printResult, Result, ResultKind } from "./pyramids/deterministic_parser";
+/*import { iterateTokensDeep, printResult, Result, ResultKind } from "./pyramids/deterministic_parser";
 import { practaliumDP, TokenType, SectionName, ParseState, SectionData, nameOfTokenType } from "./practalium_parser";
 import { createTextLines, printTextLines, TextLines } from "./pyramids/textlines";
 import { UITheory } from "./uitheory";
 import { configureDebugging } from "./things/debug";
 import { readFileSync } from "fs";
 import { generateCustomGrammar } from "./term_parser";
+import { runTests } from "./things/test";
 
 function printResultOfParsing(lines : TextLines, result : Result<SectionData, TokenType>) {
     function log(s : string) { console.log(s); }
@@ -47,7 +48,7 @@ if (parsed === undefined) {
     printResultOfParsing(example, parsed.result);
 }
 
-/*const exampleTerms : string[] = [
+const exampleTerms : string[] = [
     `\\implies 
 (\\implies A (\\implies B C)) 
 (\\implies (\\implies A B) C)`,
@@ -98,3 +99,12 @@ if (failures > 0) {
 } else {
     console.log("All " + exampleTerms.length + " examples parsed successfully.");
 }*/
+
+import { enableTests, runTests } from "./things/test";
+enableTests();
+
+import { configureDebugging } from "./things/debug";
+configureDebugging(console.log);
+
+import "./environment/test";
+runTests();
