@@ -327,7 +327,7 @@ export function tokenDP<State, S, T>(lexer : Lexer, tokentype : T, strict : bool
     return parse;
 }
 
-export function strictTokenDP<State, S, T>(lexer : Lexer, tokentype : T, strict : boolean = false) : DetParser<State, S, T> {
+export function strictTokenDP<State, S, T>(lexer : Lexer, tokentype : T) : DetParser<State, S, T> {
     return tokenDP(lexer, tokentype, true);
 }
 

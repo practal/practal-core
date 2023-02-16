@@ -82,7 +82,7 @@ export function createDocumentSemanticTokensProvider<T>(
                 tokensBuilder.push(range, cl, modifiers);
             }
             const diagnostics = [...diagnoses].map(convertDiagnosis);
-            debug("[" + counter + "] found " + tokens.length + " tokens and "+diagnostics.length+" diagnostics in " + duration + " ms (" + document.fileName + ")");
+            debug("[" + counter + "] found " + tokens.length + " tokens and "+diagnostics.length+" diagnostics in " + duration + " ms (" + document.fileName + ":" + document.version + ")");
             diagnosticCollection.set(document.uri, diagnostics);
             return tokensBuilder.build();
         }

@@ -85,7 +85,7 @@ function isIdDigit(c : string) : boolean {
 const idLetterL = charL(isIdLetter);
 const idAlphaL = charL(c => isIdLetter(c) || isIdDigit(c));
 const idHyphenL = literalL("-");
-const identifierL = seqL(idLetterL, repL(idAlphaL), repL(seqL(idHyphenL, rep1L(idAlphaL))));   
+export const identifierL = seqL(idLetterL, repL(idAlphaL), repL(seqL(idHyphenL, rep1L(idAlphaL))));   
 
 function isVarLetter(c : string) : boolean {
     return isUnicodeLetter(c);
