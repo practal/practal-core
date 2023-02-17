@@ -3,13 +3,13 @@ import { registerLanguageTokenizer } from './parser_bridge.js';
 import { TextLines } from './pyramids/textlines.js';
 import { iterateTokensDeep, Result, ResultKind, textOfToken, Token } from './pyramids/deterministic_parser.js';
 import { ALL_TOKEN_TYPES, practaliumDP, ParseState, TokenType, SectionData, SectionName } from './practalium_parser.js';
-import { assertNever } from './things/utils.js';
 import { configureDebugging, debug } from './things/debug.js';
 import { config } from 'process';
 import { Diagnoses, Diagnosis, Severity, UITheory } from './uitheory.js';
 import { Span, spanOfResult } from './pyramids/span.js';
 import { generateCustomGrammar } from './term_parser.js';
 import { nat } from './things/primitives.js';
+import { assertNever } from './things/test.js';
 
 function semantics(type : TokenType) : [string, string[]] | undefined {
     switch (type) {

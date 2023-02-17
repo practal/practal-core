@@ -10,7 +10,8 @@ import { Handle, SyntaxFragmentKind, UITheory } from "./uitheory";
 import { debug } from "./things/debug";
 import { Digraph, transitiveClosure } from "./things/digraph";
 import { nat } from "./things/primitives";
-import { assertNever, force, internalError, isUnicodeDigit, isUnicodeLetter, timeIt } from "./things/utils";
+import { force, internalError, isUnicodeDigit, isUnicodeLetter, timeIt } from "./things/utils";
+import { assertNever } from "./things/test";
 
 const ows = "ows";
 const ws = "ws";

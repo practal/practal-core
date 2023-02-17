@@ -1,5 +1,5 @@
 import { nat } from "../things/primitives";
-import { assertTrue, freeze, privateConstructor } from "../things/utils.js";
+import { freeze, privateConstructor } from "../things/utils.js";
 
 export class Shape {
 

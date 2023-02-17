@@ -1,8 +1,8 @@
 import { charL, Lexer } from "./lexer"
 import { cutoffAfterIndentation, cutoutTextLines, skipLineEnds, TextLines, TextLinesWindow } from "./textlines"
-import { assertNever } from "../things/utils"
 import { debug, debugging, debugId } from "../things/debug"
 import { nat } from "../things/primitives"
+import { assertNever } from "../things/test"
 
 export const enum ResultKind {
     TOKEN,

@@ -5,7 +5,8 @@ import { absoluteSpan, TextLines } from "./pyramids/textlines"
 import { Handle, NameDecl, UITheory } from "./uitheory"
 import { debug } from "./things/debug"
 import { nat } from "./things/primitives"
-import { assertNever, force, internalError, Printer } from "./things/utils"
+import { force, internalError, Printer } from "./things/utils"
+import { assertNever } from "./things/test"
 
 export type VarName = string
 

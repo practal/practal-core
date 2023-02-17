@@ -1,8 +1,9 @@
 import { HashMap } from "../things/hash_map";
 import { HashSet, HashSetHash } from "../things/hash_set";
 import { combineHashes, int, nat, string } from "../things/primitives";
+import { assertNever } from "../things/test";
 import { Hash, mkHash } from "../things/things";
-import { assertNever, force, freeze } from "../things/utils";
+import { force, freeze } from "../things/utils";
 import { Grammar, Rule } from "./cfg";
 
 export class Item {

@@ -1,7 +1,7 @@
 import { normalConstId } from "../identifier";
 import { identifierL } from "../term_parser";
 import { nat, string } from "../things/primitives";
-import { assert } from "../things/test";
+import { assertEq, assertIsDefined, assertIsUndefined, Test } from "../things/test";
 import { mkOrderAndHash, Relation } from "../things/things";
 import { freeze, privateConstructor } from "../things/utils";
 
@@ -34,16 +34,18 @@ export class Identifier {
 }
 freeze(Identifier);
 
-assert(() => {
+Test(() => {
     const x = Identifier.make("for-all");
     const y = Identifier.make("forall");
     const z = Identifier.make("FORALL");
     const w = Identifier.make("for--all") ?? Identifier.make("forall-") ?? Identifier.make("-forall");
-    if (x === undefined || y === undefined || z === undefined || w !== undefined) return false;
-    if (Identifier.thing.compare(x, y) !== Relation.EQUAL) return false;
-    if (Identifier.thing.compare(y, z) !== Relation.EQUAL) return false;
-    if (Identifier.thing.compare(z, x) !== Relation.EQUAL) return false;
-    return true;
+    assertIsDefined(x);
+    assertIsDefined(y);
+    assertIsDefined(z);
+    assertIsUndefined(w);
+    assertEq(Identifier.thing.compare(x, y), Relation.EQUAL);
+    assertEq(Identifier.thing.compare(y, z), Relation.EQUAL);
+    assertEq(Identifier.thing.compare(z, x), Relation.EQUAL);
 });
 
 export class Identifiers implements Iterable<Identifier> {

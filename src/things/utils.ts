@@ -12,15 +12,6 @@ export function freeze<V>(x : V) : V {
 }
 freeze(freeze);
 
-export function assertNever(x : never) : never {
-    throw new Error("unexpected value: " + x);
-}
-freeze(assertNever);
-
-export function assertTrue(x : boolean) : asserts x is true {
-    if (!x) throw new Error("Assertion failed.");
-}
-
 export function notImplemented() : never {
     throw new Error("not implemented yet");
 }

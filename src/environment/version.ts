@@ -3,8 +3,9 @@ import { charL, firstL, Lexer, literalL, rep1L, repL, seqL } from "../pyramids/l
 import { createTextLines } from "../pyramids/textlines";
 import { identifierL } from "../term_parser";
 import { arrayCompare, arrayCompareLexicographically, arrayCompareLexicographicallyZ, arrayHash, ArrayOrder } from "../things/array";
+import { debug } from "../things/debug";
 import { combineHashes, nat } from "../things/primitives";
-import { assert } from "../things/test";
+import { assertEq, assertIsDefined, assertIsUndefined, assertTrue, Test } from "../things/test";
 import { mkOrderAndHash, Relation } from "../things/things";
 import { freeze, internalError, notImplemented, privateConstructor } from "../things/utils";
 import { Identifier } from "./identifier";
@@ -37,7 +38,7 @@ const minusL = literalL("-");
 const minusP : P = strictTokenDP(minusL, Token.punctuation);
 const plusL = literalL("+");
 const plusP : P = strictTokenDP(plusL, Token.punctuation);
-const buildP : P = strictTokenDP(rep1L(firstL(letterL, digitL, dotL, minusL, plusL)), Token.punctuation);
+const buildP : P = strictTokenDP(rep1L(firstL(letterL, digitL, dotL, minusL, plusL)), Token.build);
 const versionP = seqDP(versionCoreP, optDP(minusP, prereleaseP), optDP(plusP, buildP));
 
 const prereleaseT = mkOrderAndHash<Identifier | nat>("Prelease component",
@@ -115,23 +116,26 @@ export class Version {
 
 }
 
-assert(() => {
+Test(() => {
     const v1 = Version.make("1.2-pre-alpha");
     const v2 = Version.make("1.2-pre-alpha.10");
     const v3 = Version.make("1.2-pre-alpha.01");
-    if (v1 === undefined || v2 === undefined || v3 !== undefined) return false;
-    if (Version.thing.compare(v1, v2) !== Relation.LESS) return false;
-    if (Version.thing.compare(v2, v1) !== Relation.GREATER) return false;
-    return true;
-});
+    assertIsDefined(v1);
+    assertIsDefined(v2);
+    assertIsUndefined(v3);
+    assertEq(Version.thing.compare(v1, v2), Relation.LESS);
+    assertEq(Version.thing.compare(v2, v1), Relation.GREATER);
+}, "prerelease");
 
-assert(() => {
+Test(() => {
     const v1 = Version.make("1.2-pre-alpha");
     const v2 = Version.make("1.2.0-pre-alpha+42");
-    if (v1 === undefined || v2 === undefined) return false;
-    if (Version.thing.compare(v1, v2) !== Relation.EQUAL) return false;
-    if (Version.thing.compare(v2, v1) !== Relation.EQUAL) return false;
-    if (v1.core.length !== 2 || v1.core[0] !== 1 || v1.core[1] !== 2) return false;
-    if (v2.core.length !== 3 || v2.core[0] !== 1 || v2.core[1] !== 2 || v2.core[2] !== 0) return false;
-    return true;
-});
+    assertIsDefined(v1);
+    assertIsDefined(v2);
+    assertEq(Version.thing.compare(v1, v2), Relation.EQUAL);
+    assertEq(Version.thing.compare(v2, v1), Relation.EQUAL);
+    assertTrue(v1.core.length === 2 && v1.core[0] === 1 && v1.core[1] === 2);
+    assertTrue(v2.core.length === 3 && v2.core[0] === 1 && v2.core[1] === 2 && v2.core[2] === 0);
+    assertEq(v1.build, "");
+    assertEq(v2.build, "42");
+}, "build");

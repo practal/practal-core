@@ -1,5 +1,6 @@
 import { int } from "./primitives";
-import { assertNever, freeze } from "./utils";
+import { assertNever } from "./test";
+import { freeze } from "./utils";
 
 export const enum Relation {
     UNRELATED,

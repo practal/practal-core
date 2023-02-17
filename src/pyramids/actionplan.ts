@@ -1,7 +1,8 @@
 import { debug } from "../things/debug";
 import { Digraph, weaklyConnectedComponents } from "../things/digraph";
 import { int, nat } from "../things/primitives";
-import { assertNever, force, freeze, internalError } from "../things/utils";
+import { assertNever } from "../things/test";
+import { force, freeze } from "../things/utils";
 import { GrammarSymbols } from "./grammar_symbols";
 import { Action, ActionKind, Actions } from "./lr";
 

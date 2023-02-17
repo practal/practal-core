@@ -7,7 +7,7 @@ import { absoluteSpan, absoluteSpanStr, TextLines } from "./pyramids/textlines";
 import { Handle, Head, NameDecl, SyntaxFragment, SyntaxFragmentKind, SyntaxSpec, UITheory } from "./uitheory";
 import { debug } from "./things/debug";
 import { int, nat } from "./things/primitives";
-import { assertTrue, force, internalError, notImplemented, Printer } from "./things/utils";
+import { force, internalError, notImplemented, Printer } from "./things/utils";
 import { constructUITermFromResult, mkUIRule, mkUITemplate, mkUIVar, printUITerm, UIProof, UIRule, UITemplate, UITerm, UITermAbstrApp, UITermVarApp, UIThmExpr, UIThmExprLabel, UIVar, validateUITerm, VarName } from "./uiterm";
 import { boundVarP, freeVarP } from "./term_parser";
 

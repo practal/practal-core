@@ -1,5 +1,5 @@
 import { int, nat } from "../things/primitives";
-import { assertNever, force, internalError, notImplemented } from "../things/utils";
+import { force, internalError, notImplemented } from "../things/utils";
 import { DetParser, DPResult, endLineOf, endOf, eofDP, Result, ResultKind, startLineOf, Tree } from "./deterministic_parser";
 import { TextLines, textlinesUntil } from "./textlines";
 import { ActionPlan, ActionPlanKind, planActions, planContainsError, printActionPlan, printActions } from "./actionplan";
@@ -8,6 +8,7 @@ import { Sym } from "./grammar_symbols";
 import { Action, ActionKind, computeActionsOfState, computeLR1Graph, extendGrammar, nextTerminalsOf } from "./lr";
 import { SectionDataNone, SectionName } from "../practalium_parser";
 import { debug } from "../things/debug";
+import { assertNever } from "../things/test";
 
 export type TerminalParsers<State, S, T> = 
     (terminals : Set<Sym | null>) => 

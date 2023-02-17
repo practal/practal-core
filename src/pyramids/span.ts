@@ -1,6 +1,7 @@
 import { nat } from "../things/primitives";
+import { assertNever } from "../things/test";
 import { assertThings } from "../things/things";
-import { assertNever, freeze } from "../things/utils";
+import { freeze } from "../things/utils";
 import { Result, ResultKind, textOfToken, Token } from "./deterministic_parser";
 import { TextLines } from "./textlines";
 

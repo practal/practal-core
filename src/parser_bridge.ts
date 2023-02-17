@@ -5,7 +5,7 @@ import { DetParser, Token } from './pyramids/deterministic_parser';
 import { debug } from './things/debug';
 import { Diagnosis, Severity } from './uitheory';
 import { Span, spanOfResult } from './pyramids/span';
-import { assertNever, notImplemented } from './things/utils';
+import { assertNever } from './things/test';
 
 class TextDocumentLines implements TextLines {
 

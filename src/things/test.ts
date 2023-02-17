@@ -1,5 +1,5 @@
 import { debug } from "./debug";
-import { nat } from "./primitives";
+import { nat, sameValueZero } from "./primitives";
 import { freeze } from "./utils";
 
 /**
@@ -25,7 +25,27 @@ export function sourcePosition(up : nat = 1) : string | undefined {
 }
 freeze(sourcePosition);
 
-export type Test = () => boolean
+export type Test = () => void
+
+class AssertionFailed {
+
+    message : string | undefined;
+
+    constructor(message? : string) {
+        this.message = message;
+        freeze(this);
+    }
+
+    toString() : string {
+        if (this.message) {
+            return "Assertion failed: " + this.message + ".";
+        } else {
+            return "Assertion failed."
+        }
+    }
+
+}
+freeze(AssertionFailed);
 
 let tests : [string | undefined, string | undefined, Test][] = [];
 let missed = 0;
@@ -42,7 +62,7 @@ export function disableTests() {
 }
 freeze(disableTests);
 
-export function assert(test : Test, descr? : string) {
+export function Test(test : Test, descr? : string) {
     if (tests_are_enabled) {
         const pos = sourcePosition(2);
         tests.push([pos, descr, test]);
@@ -50,7 +70,33 @@ export function assert(test : Test, descr? : string) {
         missed += 1;
     }
 }
-freeze(assert);
+freeze(Test);
+
+export function assertTrue(condition : any) : asserts condition is true {
+    if (condition !== true) throw new AssertionFailed();
+}
+
+export function assertFalse(condition : boolean) : asserts condition is false  {
+    if (condition !== false) throw new AssertionFailed();
+}
+
+export function assertNever(value : never) : never {
+    throw new AssertionFailed("unexpected value '" + value + "'");
+}
+
+export function assertIsDefined<T>(value : T) : asserts value is NonNullable<T> {
+    if (value === undefined || value === null) throw new AssertionFailed("undefined value");
+}
+
+export function assertIsUndefined(value : any) : asserts value is undefined | null {
+    if (value !== undefined && value !== null) throw new AssertionFailed("value is defined as '" + value + "'");
+}
+
+export function assertEq<E>(...values : E[]) {
+    for (let i = 1; i < values.length; i++) {
+        if(!sameValueZero.equal(values[i - 1], values[i])) throw new AssertionFailed(`values '${values[i - 1]}' and '${values[i]}' are not equal`);
+    }
+} 
 
 export function runTests() {
     debug("There are " + tests.length + " tests to run.");
@@ -61,17 +107,21 @@ export function runTests() {
     for (const t of tests) {
         const [pos, descr, test] = t;
         try {
-            if (test()) {
-                succeeded += 1;
-            } else {
+            test();
+            succeeded += 1;
+        } catch(error) {
+            if (error instanceof AssertionFailed) {
                 failed += 1;
                 const name = descr ? "'" + descr + "' " : "";
-                debug("Assertion "+name+"failed at '" + pos + "'.");
+                if (error.message)
+                    debug("Test "+name+"failed at '" + pos + "': " + error.message + ".");
+                else 
+                    debug("Test "+name+"failed at '" + pos + "'.");
+            } else {                    
+                crashed += 1;
+                const name = descr ? "'" + descr + "' " : "";
+                debug("Test " + name + "crashed at '" + pos + "'.");
             }
-        } catch {
-            crashed += 1;
-            const name = descr ? "'" + descr + "' " : "";
-            debug("Assertion " + name + "crashed at '" + pos + "'.");
         }
     }
     debug("------------------------------------------------");
@@ -79,10 +129,10 @@ export function runTests() {
         debug("All " + succeeded + " tests concluded successfully.");
     } else {
         if (crashed > 0) debug("There were " + crashed + " crashes.");
-        if (failed > 0) debug("There were " + failed + " failed assertions.");
+        if (failed > 0) debug("There were " + failed + " failed tests.");
         if (succeeded > 0) debug("Out of " + tests.length + " tests, " + succeeded + " succeeded.");
     }
-    if (missed > 0) debug("!!! Because tests were disabled, " + missed + " assertions have been missed.");
+    if (missed > 0) debug("!!! Because tests were disabled then, " + missed + " tests have been missed.");
     debug("");
 }
 freeze(runTests);
