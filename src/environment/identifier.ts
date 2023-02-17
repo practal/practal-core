@@ -9,7 +9,7 @@ export class Identifier {
     static #internal : boolean = false
     id : string
     #normal : string
-    constructor(id : string, normal : string) {
+    private constructor(id : string, normal : string) {
         if (!Identifier.#internal) privateConstructor("Identifier");
         this.id = id;
         this.#normal = normal;
@@ -51,7 +51,7 @@ Test(() => {
 export class Identifiers implements Iterable<Identifier> {
     static #internal : boolean = false
     components : Identifier[]
-    constructor(components : Identifier[]) {
+    private constructor(components : Identifier[]) {
         if (!Identifiers.#internal) privateConstructor("Identifiers");
         this.components = components;
         freeze(this);

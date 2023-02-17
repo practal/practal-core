@@ -66,3 +66,10 @@ function hashString(x : string) : int {
 
 export const string = mkOrderAndHash("string", 
     x => typeof x === "string", compareString, hashString);
+
+const hashTrue = string.hash("true");
+const hashFalse = string.hash("false");
+export const boolean : Hash<boolean> & Order<boolean> = mkOrderAndHash("boolean",
+    x => x === true || x === false, 
+    (x, y) => compareInt(x ? 1 : 0, y ? 1 : 0), 
+    x => x ? hashTrue : hashFalse);

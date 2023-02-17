@@ -1,9 +1,0 @@
-
-
-
-export interface PackageManager {
-
-    //listPackages() : 
-
-
-}

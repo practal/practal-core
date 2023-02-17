@@ -50,7 +50,7 @@ freeze(AssertionFailed);
 let tests : [string | undefined, string | undefined, Test][] = [];
 let missed = 0;
 
-let tests_are_enabled = false;
+let tests_are_enabled = true;
 
 export function enableTests() {
     tests_are_enabled = true;

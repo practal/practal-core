@@ -147,6 +147,7 @@ export function activate(context: vscode.ExtensionContext) {
     debug("©︎ 2023 Steven Obua (trading as Recursive Mind)");
     debug("Check https://practal.com for information and updates."); 
     debug("--------------------------------------------------------------------");
+    debug("Executing in '" + __dirname + "'.");
     /*const state = context.globalState
     const installed = state.get("practalium.installed");
     if (installed) {

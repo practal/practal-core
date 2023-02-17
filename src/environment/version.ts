@@ -1,12 +1,12 @@
-import { DetParser, repDP, seqDP, strictTokenDP, optDP, endOf, iterateContentTokens, textOfToken, orDP } from "../pyramids/deterministic_parser";
+import { DetParser, repDP, seqDP, strictTokenDP, optDP, endOf, iterateContentTokens, textOfToken, orDP, modifyResultDP, DPResult, Result, joinResults } from "../pyramids/deterministic_parser";
 import { charL, firstL, Lexer, literalL, rep1L, repL, seqL } from "../pyramids/lexer";
-import { createTextLines } from "../pyramids/textlines";
+import { createTextLines, TextLines } from "../pyramids/textlines";
 import { identifierL } from "../term_parser";
 import { arrayCompare, arrayCompareLexicographically, arrayCompareLexicographicallyZ, arrayHash, ArrayOrder } from "../things/array";
 import { debug } from "../things/debug";
-import { combineHashes, nat } from "../things/primitives";
+import { boolean, combineHashes, nat } from "../things/primitives";
 import { assertEq, assertIsDefined, assertIsUndefined, assertTrue, Test } from "../things/test";
-import { mkOrderAndHash, Relation } from "../things/things";
+import { Hash, mkOrderAndHash, Order, Relation } from "../things/things";
 import { freeze, internalError, notImplemented, privateConstructor } from "../things/utils";
 import { Identifier } from "./identifier";
 
@@ -15,10 +15,40 @@ enum Token {
     prerelease_id,
     prerelease_num,
     build,
-    punctuation
+    punctuation,
+    greater,
+    less,
+    greaterEq,
+    lessEq
 }
 
-type P = DetParser<null, null, Token>
+enum SectionKind {
+    version,
+    range,
+    versions
+}
+
+type SectionVersion = {
+    kind : SectionKind.version,
+    version : Version
+}
+function SectionVersion(version : Version) : SectionVersion {
+    return { kind : SectionKind.version, version : version };
+}
+
+type SectionRange = {
+    kind : SectionKind.range,
+    range : VersionRange
+}
+
+type SectionVersions = {
+    kind : SectionKind.versions,
+    union : Versions
+}
+
+type Section = SectionVersion | SectionRange | SectionVersions
+
+type P = DetParser<null, Section, Token>
 
 const zeroL = literalL("0");
 const digitL = charL(c => c >= "0" && c <= "9");
@@ -39,7 +69,22 @@ const minusP : P = strictTokenDP(minusL, Token.punctuation);
 const plusL = literalL("+");
 const plusP : P = strictTokenDP(plusL, Token.punctuation);
 const buildP : P = strictTokenDP(rep1L(firstL(letterL, digitL, dotL, minusL, plusL)), Token.build);
-const versionP = seqDP(versionCoreP, optDP(minusP, prereleaseP), optDP(plusP, buildP));
+const versionP = modifyResultDP(seqDP(versionCoreP, optDP(minusP, prereleaseP), optDP(plusP, buildP)), 
+    (lines, result) => {
+        if (result === undefined) return undefined;
+        const version = Version.construct(lines, result.result);
+        if (version === undefined) return undefined;
+        result.result.type = SectionVersion(version);
+        return result;
+    });
+const greaterEqP : P = strictTokenDP(firstL(literalL(">="), literalL("≥")), Token.greaterEq);
+const lessEqP : P = strictTokenDP(firstL(literalL("<="), literalL("≤")), Token.lessEq);
+const greaterP : P = strictTokenDP(literalL(">"), Token.greater);
+const lessP : P = strictTokenDP(literalL("<"), Token.less);
+//const orP : P = strictTokenDP(literalL("||"), Token
+
+
+//const versionRange1P
 
 const prereleaseT = mkOrderAndHash<Identifier | nat>("Prelease component",
     x => Identifier.thing.is(x) || nat.is(x),
@@ -59,7 +104,7 @@ export class Version {
     prerelease : (Identifier | nat)[]
     build : string
 
-    constructor(core : nat[], prerelease : (Identifier | nat)[], build : string) {
+    private constructor(core : nat[], prerelease : (Identifier | nat)[], build : string) {
         if (!Version.#internal) privateConstructor("Version");
         this.core = core;
         this.prerelease = prerelease;
@@ -78,17 +123,14 @@ export class Version {
         return version;
     }
 
-    static make(version : string) : Version | undefined {
-        const lines = createTextLines([version]);
-        const parsed = versionP(null, lines, 0, 0);
-        if (parsed === undefined) return undefined;
-        const [endLine, endOffset] = endOf(parsed.result);
-        if (endLine < 1 && endOffset < version.length) return undefined;
-        const core = [...iterateContentTokens(parsed.result, t => t === Token.core)].
+    static construct(lines : TextLines, result : Result<Section, Token>) : Version | undefined {
+        const [endLine, endOffset] = endOf(result);
+        //if (endLine < 1 && endOffset < version.length) return undefined;
+        const core = [...iterateContentTokens(result, t => t === Token.core)].
             map(t => Number.parseInt(textOfToken(lines, t)));
-        const ids = [...iterateContentTokens(parsed.result, t => t === Token.prerelease_id || t === Token.prerelease_num)].
+        const ids = [...iterateContentTokens(result, t => t === Token.prerelease_id || t === Token.prerelease_num)].
             map(t => t.type === Token.prerelease_id ? Identifier.make(textOfToken(lines, t)) : Number.parseInt(textOfToken(lines, t)));
-        const build = [...iterateContentTokens(parsed.result, t => t === Token.build)].
+        const build = [...iterateContentTokens(result, t => t === Token.build)].
             map(t => textOfToken(lines, t));
         for (const id of ids) {
             if (id === undefined) return undefined;
@@ -96,13 +138,22 @@ export class Version {
         const prerelease = ids as (Identifier | nat)[];
         freeze(core);
         freeze(prerelease);
-        this.#internal = true;
+        Version.#internal = true;
         const made = new Version(core, prerelease, build.length > 0 ? build[0] : ""); 
-        this.#internal = false;
+        Version.#internal = false;
         return made;
     }
 
-    static thing = mkOrderAndHash<Version>("Version",
+    static parse(version : string) : Version | undefined {
+        const lines = createTextLines([version]);
+        const parsed = versionP(null, lines, 0, 0);
+        if (parsed === undefined) return undefined;
+        const [endLine, endOffset] = endOf(parsed.result);
+        if (endLine < 1 && endOffset < version.length) return undefined;
+        return Version.construct(lines, parsed.result);
+    }
+
+    static thing : Order<Version> & Hash<Version> = mkOrderAndHash<Version>("Version",
         (x : Version) => { return x instanceof Version; },
         (x : Version, y : Version) => {
             let c = arrayCompareLexicographicallyZ(nat, 0, x.core, y.core);
@@ -117,9 +168,9 @@ export class Version {
 }
 
 Test(() => {
-    const v1 = Version.make("1.2-pre-alpha");
-    const v2 = Version.make("1.2-pre-alpha.10");
-    const v3 = Version.make("1.2-pre-alpha.01");
+    const v1 = Version.parse("1.2-pre-alpha");
+    const v2 = Version.parse("1.2-pre-alpha.10");
+    const v3 = Version.parse("1.2-pre-alpha.01");
     assertIsDefined(v1);
     assertIsDefined(v2);
     assertIsUndefined(v3);
@@ -128,8 +179,8 @@ Test(() => {
 }, "prerelease");
 
 Test(() => {
-    const v1 = Version.make("1.2-pre-alpha");
-    const v2 = Version.make("1.2.0-pre-alpha+42");
+    const v1 = Version.parse("1.2-pre-alpha");
+    const v2 = Version.parse("1.2.0-pre-alpha+42");
     assertIsDefined(v1);
     assertIsDefined(v2);
     assertEq(Version.thing.compare(v1, v2), Relation.EQUAL);
@@ -139,3 +190,60 @@ Test(() => {
     assertEq(v1.build, "");
     assertEq(v2.build, "42");
 }, "build");
+
+export class VersionRange {
+    static #internal = false;
+
+    lower : Version | undefined
+    inclusive_lower : boolean
+    upper : Version | undefined
+    inclusive_upper : boolean
+    
+    private constructor(lower : Version | undefined, inclusive_lower : boolean, upper : Version, inclusive_upper : boolean) {
+        if (!VersionRange.#internal) privateConstructor("VersionRange");
+        this.lower = lower;
+        this.inclusive_lower = inclusive_lower;
+        this.upper = upper;
+        this.inclusive_upper = inclusive_upper;
+        freeze(this);
+    }
+
+    static make(lower : Version | undefined, inclusive_lower : boolean, upper : Version, inclusive_upper : boolean) : VersionRange | undefined {
+        if (!(Version.thing.is(lower) && Version.thing.is(upper))) return undefined;
+        if (!(boolean.is(inclusive_lower) && boolean.is(inclusive_upper))) return undefined;
+        VersionRange.#internal = true;
+        const made = new VersionRange(lower, inclusive_lower, upper, inclusive_upper);
+        VersionRange.#internal = false;
+        return made;
+    }
+}
+freeze(VersionRange);
+
+export class Versions {
+    static #internal = false;
+    ranges : (Version | VersionRange)[];
+
+    constructor(ranges : (Version | VersionRange)[]) {
+        if (!Versions.#internal) privateConstructor("Versions");
+        this.ranges = ranges;
+        freeze(this);
+    }
+
+    static make(ranges : (Version | VersionRange)[]) : Versions | undefined {
+        const verified : (Version | VersionRange)[] = [];
+        for (const v of ranges) {
+            if (Version.thing.is(v) || v instanceof VersionRange) {
+                verified.push(v);
+            } else {
+                return undefined;
+            }
+        }
+        freeze(verified);
+        Versions.#internal = true;
+        const made = new Versions(verified);
+        Versions.#internal = false;
+        return made;
+    }
+
+}
+freeze(Versions);
