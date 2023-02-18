@@ -33,6 +33,7 @@ type SectionVersion = {
     kind : SectionKind.version,
     version : Version
 }
+
 function SectionVersion(version : Version) : SectionVersion {
     return { kind : SectionKind.version, version : version };
 }
@@ -41,14 +42,19 @@ type SectionRange = {
     kind : SectionKind.range,
     range : VersionRange
 }
+
 function SectionRange(range : VersionRange) : SectionRange {
     return { kind : SectionKind.range, range : range };
 }
 
 type SectionVersions = {
     kind : SectionKind.versions,
-    union : Versions
+    versions : Versions
 }
+
+function SectionVersions(versions : Versions) : SectionVersions {
+    return { kind : SectionKind.versions, versions : versions };
+} 
 
 type Section = SectionVersion | SectionRange | SectionVersions
 
@@ -171,7 +177,6 @@ const greaterEqP : P = strictTokenDP(firstL(literalL(">="), literalL("≥")), To
 const lessEqP : P = strictTokenDP(firstL(literalL("<="), literalL("≤")), Token.lessEq);
 const greaterP : P = strictTokenDP(literalL(">"), Token.greater);
 const lessP : P = strictTokenDP(literalL("<"), Token.less);
-const orP : P = strictTokenDP(literalL("|"), Token.or);
 
 function extractVersions(result : DPResult<null, Section, Token>) : Version[] | undefined {
     if (result === undefined) return undefined;
@@ -211,7 +216,6 @@ function genericHalfOpenP(op : P, lower : boolean, inclusive : boolean) : P
         return result;
     });
 }
-
 
 function genericRangeSwitchedP(left : P, right : P, 
     lower : 0 | 1, upper : 0 | 1,
@@ -265,7 +269,7 @@ export class VersionRange {
     }
 
     static parse(range : string) : VersionRange | undefined {
-        const s = parseLine(rangeP, null, range)?.result;
+        const s = parseLine(VersionRange.parser, null, range)?.result;
         return s ? (s as SectionRange).range : undefined;        
     }
 
@@ -282,15 +286,44 @@ export class VersionRange {
 }
 freeze(VersionRange);
 
+const orP : P = strictTokenDP(literalL("|"), Token.or);
+const vP : P = orDP(VersionRange.parser, Version.parser);
+const versionsP : P = modifyResultDP(seqDP(vP, repDP(ows, orP, ows, vP)), 
+    (lines, result) => {
+        if (result === undefined) return undefined;
+        const sections = [...iterateContentSections(result.result, s => s.kind === SectionKind.version || s.kind === SectionKind.range)];
+        const vs : (VersionRange | Version)[] = [];
+        for (const section of sections) {
+            if (section.type?.kind === SectionKind.version) {
+                vs.push(section.type.version);
+            } else if (section.type?.kind === SectionKind.range) {
+                vs.push(section.type.range);
+            } else internalError();
+        }
+        const versions = Versions.make(vs);
+        if (versions === undefined) return undefined;
+        result.result.type = SectionVersions(versions);
+        return result;
+    });
+
 export class Versions {
     static #internal = false;
-    ranges : (Version | VersionRange)[];
+    versions : (Version | VersionRange)[];
 
-    constructor(ranges : (Version | VersionRange)[]) {
+    constructor(versions : (Version | VersionRange)[]) {
         if (!Versions.#internal) privateConstructor("Versions");
-        this.ranges = ranges;
+        this.versions = versions;
         freeze(this);
     }
+
+    toString() : string {
+        return this.versions.map(v => v.toString()).join(" | ");
+    }
+
+    static parse(range : string) : Versions | undefined {
+        const s = parseLine(Versions.parser, null, range)?.result;
+        return s ? (s as SectionVersions).versions : undefined;        
+    }    
 
     static make(ranges : (Version | VersionRange)[]) : Versions | undefined {
         const verified : (Version | VersionRange)[] = [];
@@ -302,11 +335,14 @@ export class Versions {
             }
         }
         freeze(verified);
+        if (verified.length === 0) return undefined;
         Versions.#internal = true;
         const made = new Versions(verified);
         Versions.#internal = false;
         return made;
     }
+
+    static parser : P = versionsP;
 
 }
 freeze(Versions);

@@ -1,6 +1,6 @@
 import { debug } from "../things/debug";
 import { assertEQ, assertEq, assertIsDefined, assertIsUndefined, assertLESS, assertTrue, assertUNRELATED, Test } from "../things/test";
-import { Version, VersionRange } from "./version";
+import { Version, VersionRange, Versions } from "./version";
 
 Test(() => {
     const v = Version.parse("main.1@alpha.7.3");
@@ -9,6 +9,12 @@ Test(() => {
     assertTrue(v.release.length === 2 && v.prerelease.length === 3);
     assertTrue(v.release[0].toString() === "main" && v.release[1] === 1);
     assertTrue(v.prerelease[0].toString() === "alpha" && v.prerelease[1] === 7 && v.prerelease[2] === 3);
+});
+
+Test(() => {
+    const v = Versions.parse("main.1@alpha.7.3");
+    assertIsDefined(v);
+    assertEq(v.toString(), "main.1@alpha.7.3");
 });
 
 Test(() => {
@@ -102,6 +108,8 @@ Test(() => {
     assertEq(w.toString(), ">1 ≤2");
 });
 
+
+
 Test(() => {
     const u = VersionRange.parse(">= 1");
     const v = VersionRange.parse("<2");
@@ -115,6 +123,13 @@ Test(() => {
     assertEq(v.toString(), "<2");
     assertEq(w.toString(), "≤7");
     assertEq(x.toString(), ">8");
+});
+
+Test(() => {
+    const u = Versions.parse(">=25 | 8 | >= alpha.4 <alpha.5");
+    assertIsDefined(u);
+    assertTrue(u instanceof Versions);
+    assertEq(u.toString(), "≥25 | 8 | ≥alpha.4 <alpha.5");
 });
 
 
