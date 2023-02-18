@@ -1,4 +1,3 @@
-import { debug } from "../things/debug";
 import { assertEQ, assertEq, assertIsDefined, assertIsUndefined, assertLESS, assertTrue, assertUNRELATED, Test } from "../things/test";
 import { Version, VersionRange, Versions } from "./version";
 
@@ -106,6 +105,14 @@ Test(() => {
     assertEq(u.toString(), "≥1 <2");
     assertEq(v.toString(), "≥1 <2");
     assertEq(w.toString(), ">1 ≤2");
+});
+
+Test(() => {
+    const u = VersionRange.parse(">1 >2");
+    const v = VersionRange.parse("<1 >2");
+    assertIsUndefined(u);
+    assertIsDefined(v);
+    assertEq(v.toString(), ">2 <1");
 });
 
 Test(() => {
