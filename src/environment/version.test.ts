@@ -108,8 +108,6 @@ Test(() => {
     assertEq(w.toString(), ">1 ≤2");
 });
 
-
-
 Test(() => {
     const u = VersionRange.parse(">= 1");
     const v = VersionRange.parse("<2");
