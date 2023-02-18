@@ -1,5 +1,6 @@
 import { debug } from "./debug";
 import { nat, sameValueZero } from "./primitives";
+import { Equality, Order, Relation } from "./things";
 import { freeze } from "./utils";
 
 /**
@@ -93,10 +94,48 @@ export function assertIsUndefined(value : any) : asserts value is undefined | nu
 }
 
 export function assertEq<E>(...values : E[]) {
-    for (let i = 1; i < values.length; i++) {
-        if(!sameValueZero.equal(values[i - 1], values[i])) throw new AssertionFailed(`values '${values[i - 1]}' and '${values[i]}' are not equal`);
+    for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < values.length; j++) {
+            if(!sameValueZero.equal(values[i], values[j])) throw new AssertionFailed(`values '${values[i]}' and '${values[j]}' are not equal`);
+        }
     }
-} 
+}
+
+export function assertEQ<E>(eq : Equality<E>, ...values : E[]) {
+    for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < values.length; j++) {
+            if(!eq.equal(values[i], values[j])) throw new AssertionFailed(`values '${values[i]}' and '${values[j]}' are not EQUAL`);
+        }
+    }
+}
+
+export function assertLESS<E>(order : Order<E>, ...values : E[]) {
+    for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < values.length; j++) {
+            if (i < j && order.compare(values[i], values[j]) !== Relation.LESS) throw new AssertionFailed(`value '${values[i]}' is not LESS than '${values[j]}'`);
+            if (i > j && order.compare(values[i], values[j]) !== Relation.GREATER) throw new AssertionFailed(`value '${values[i]}' is not GREATER than '${values[j]}'`);
+        }
+    }
+}
+
+export function assertLEQ<E>(order : Order<E>, ...values : E[]) {
+    for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < values.length; j++) {
+            const c = order.compare(values[i], values[j]);
+            if (i < j && c !== Relation.EQUAL && c !== Relation.LESS) throw new AssertionFailed(`value '${values[i]}' is not LESS than or EQUAL to '${values[j]}'`);
+            if (i > j && c !== Relation.EQUAL && c !== Relation.GREATER) throw new AssertionFailed(`value '${values[i]}' is not GREATER than or EQUAL to '${values[j]}'`);
+            if (i === j && c !== Relation.EQUAL) throw new AssertionFailed(`value '${values[i]}' does not EQUAL itself`);
+        }
+    }
+}
+
+export function assertUNRELATED<E>(order : Order<E>, ...values : E[]) {
+    for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < values.length; j++) {
+            if(i !== j && order.compare(values[i], values[j]) !== Relation.UNRELATED) throw new AssertionFailed(`values '${values[i]}' and '${values[j]}' are related`);
+        }
+    }
+}
 
 export function runTests() {
     debug("There are " + tests.length + " tests to run.");
