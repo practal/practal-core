@@ -73,6 +73,11 @@ export function Test(test : Test, descr? : string) {
 }
 freeze(Test);
 
+export function MissTest(test : Test, descr? : string) {
+    missed += 1;
+}
+freeze(MissTest);
+
 export function assertTrue(condition : any) : asserts condition is true {
     if (condition !== true) throw new AssertionFailed();
 }

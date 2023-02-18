@@ -1,4 +1,4 @@
-import { DetParser, repDP, seqDP, strictTokenDP, optDP, endOf, iterateContentTokens, textOfToken, orDP, modifyResultDP, DPResult, Result, joinResults } from "../pyramids/deterministic_parser";
+import { DetParser, repDP, seqDP, strictTokenDP, optDP, endOf, iterateContentTokens, textOfToken, orDP, modifyResultDP, DPResult, Result, joinResults, iterateContentSections, parseLine } from "../pyramids/deterministic_parser";
 import { charL, firstL, Lexer, literalL, rep1L, repL, seqL } from "../pyramids/lexer";
 import { createTextLines, TextLines } from "../pyramids/textlines";
 import { identifierL } from "../term_parser";
@@ -11,7 +11,8 @@ import { freeze, internalError, notImplemented, privateConstructor } from "../th
 import { Identifier } from "./identifier";
 
 enum Token {
-    current,
+    whitespace,
+    pre,
     id,
     num,
     punctuation,
@@ -40,6 +41,9 @@ type SectionRange = {
     kind : SectionKind.range,
     range : VersionRange
 }
+function SectionRange(range : VersionRange) : SectionRange {
+    return { kind : SectionKind.range, range : range };
+}
 
 type SectionVersions = {
     kind : SectionKind.versions,
@@ -55,6 +59,7 @@ const positiveDigitL = charL(c => c >= "1" && c <= "9");
 const numericIdL = seqL(positiveDigitL, repL(digitL));
 const dotL = literalL(".");
 const dotP : P = strictTokenDP(dotL, Token.punctuation);
+const ows : P = repDP(strictTokenDP(literalL(" "), Token.whitespace));
 function dotSeparatedP(p : P) : P {
     return seqDP(p, repDP(seqDP(dotP, p)));
 }
@@ -62,15 +67,7 @@ function dotSeparatedP(p : P) : P {
 const releaseIdP : P = strictTokenDP(identifierL, Token.id);
 const releaseNumP : P = strictTokenDP(numericIdL, Token.num);
 const releaseP : P = dotSeparatedP(orDP(releaseIdP, releaseNumP));
-const currentP : P = strictTokenDP(literalL("@"), Token.current)
-const greaterEqP : P = strictTokenDP(firstL(literalL(">="), literalL("≥")), Token.greaterEq);
-const lessEqP : P = strictTokenDP(firstL(literalL("<="), literalL("≤")), Token.lessEq);
-const greaterP : P = strictTokenDP(literalL(">"), Token.greater);
-const lessP : P = strictTokenDP(literalL("<"), Token.less);
-const orP : P = strictTokenDP(literalL(","), Token.or);
-
-
-//const versionRange1P
+const preP : P = strictTokenDP(literalL("@"), Token.pre)
 
 const releaseT = mkOrderAndHash<Identifier | nat>("release",
     x => Identifier.thing.is(x) || nat.is(x),
@@ -84,6 +81,7 @@ const releaseT = mkOrderAndHash<Identifier | nat>("release",
         }
     },
     x => nat.is(x) ? nat.hash(x) : Identifier.thing.hash(x));
+
 
 const versionHash = string.hash("Version");
 
@@ -102,7 +100,6 @@ export class Version {
     toString() : string {
         const a = this.release.map(id => id.toString()).join(".");
         const b = this.prerelease.map(id => id.toString()).join(".");
-        if (a === "" && b === "") return "@";
         if (b === "") return a;
         return a + "@" + b;
     }
@@ -110,13 +107,13 @@ export class Version {
     static #construct(lines : TextLines, result : Result<Section, Token>) : Version | undefined {
         //const [endLine, endOffset] = endOf(result);
         //if (endLine < 1 && endOffset < version.length) return undefined;
-        const components = [...iterateContentTokens(result, t => t === Token.num || t === Token.id || t === Token.current)];
+        const components = [...iterateContentTokens(result, t => t === Token.num || t === Token.id || t === Token.pre)];
             //map(t => textOfToken(lines, t));
         const release : (Identifier | nat)[] = [];
         const prerelease : (Identifier | nat)[] = [];
         let fill_release = true;
         for (const c of components) {
-            if (c.type === Token.current) {
+            if (c.type === Token.pre) {
                 fill_release = false;
             } else if (c.type === Token.id) {
                 const text = textOfToken(lines, c);
@@ -132,7 +129,7 @@ export class Version {
         }
         freeze(release);
         freeze(prerelease);
-        if (release.length === 0 && prerelease.length !== 0) return undefined;
+        if (release.length === 0) return undefined;
         Version.#internal = true;
         const made = new Version(release, prerelease); 
         Version.#internal = false;
@@ -140,12 +137,8 @@ export class Version {
     }
 
     static parse(version : string) : Version | undefined {
-        const lines = createTextLines([version]);
-        const parsed = Version.parser(null, lines, 0, 0);
-        if (parsed === undefined) return undefined;
-        const [endLine, endOffset] = endOf(parsed.result);
-        if (endLine < 1 && endOffset < version.length) return undefined;
-        return (parsed.result.type as SectionVersion).version;
+        const s = parseLine(Version.parser, null, version)?.result;
+        return s ? (s as SectionVersion).version : undefined;
     }
 
     static thing : Order<Version> & Hash<Version> = mkOrderAndHash<Version>("Version",
@@ -162,9 +155,7 @@ export class Version {
         (x : Version) => combineHashes([versionHash, arrayHash(releaseT, x.release), arrayHash(releaseT, x.prerelease)])
     );
 
-    static parser : P = modifyResultDP(orDP(
-        seqDP(releaseP, optDP(currentP, releaseP)),
-        currentP), 
+    static parser : P = modifyResultDP(seqDP(releaseP, optDP(preP, releaseP)), 
         (lines, result) => {
             if (result === undefined) return undefined;
             const version = Version.#construct(lines, result.result);
@@ -176,6 +167,74 @@ export class Version {
 }
 freeze(Version);
 
+const greaterEqP : P = strictTokenDP(firstL(literalL(">="), literalL("≥")), Token.greaterEq);
+const lessEqP : P = strictTokenDP(firstL(literalL("<="), literalL("≤")), Token.lessEq);
+const greaterP : P = strictTokenDP(literalL(">"), Token.greater);
+const lessP : P = strictTokenDP(literalL("<"), Token.less);
+const orP : P = strictTokenDP(literalL("|"), Token.or);
+
+function extractVersions(result : DPResult<null, Section, Token>) : Version[] | undefined {
+    if (result === undefined) return undefined;
+    const versions = [...iterateContentSections(result.result, s => s.kind === SectionKind.version)].
+        map(s => (s.type as SectionVersion).version);
+    return versions;
+}
+
+function genericRangeP(left : P, right : P, 
+    lower : 0 | 1, upper : 0 | 1,
+    lower_inclusive : boolean, upper_inclusive : boolean) : P 
+{
+    if (lower === upper) internalError();
+    return modifyResultDP(seqDP(left, ows, Version.parser, ows, right, ows, Version.parser), (lines, result) => {
+        const versions = extractVersions(result);
+        if (versions === undefined || versions.length !== 2) return undefined;
+        const range = VersionRange.make(versions[lower], lower_inclusive, versions[upper], upper_inclusive);
+        if (range === undefined) return undefined;
+        result!.result.type = SectionRange(range);
+        return result;
+    });
+}
+
+function genericHalfOpenP(op : P, lower : boolean, inclusive : boolean) : P
+{
+    return modifyResultDP(seqDP(op, ows, Version.parser), (lines, result) => {
+        const versions = extractVersions(result);
+        if (versions === undefined || versions.length !== 1) return undefined;
+        const version = versions[0];
+        let range : VersionRange | undefined
+        if (lower) 
+            range = VersionRange.make(version, inclusive, undefined, false);
+        else
+            range = VersionRange.make(undefined, false, version, inclusive);
+        if (range === undefined) return undefined;
+        result!.result.type = SectionRange(range);
+        return result;
+    });
+}
+
+
+function genericRangeSwitchedP(left : P, right : P, 
+    lower : 0 | 1, upper : 0 | 1,
+    lower_inclusive : boolean, upper_inclusive : boolean) : P 
+{
+    return genericRangeP(right, left, upper, lower, lower_inclusive, upper_inclusive);
+}
+
+const rangeP : P = orDP(
+    genericRangeP(greaterP, lessP, 0, 1, false, false),
+    genericRangeP(greaterP, lessEqP, 0, 1, false, true),
+    genericRangeP(greaterEqP, lessP, 0, 1, true, false),
+    genericRangeP(greaterEqP, lessEqP, 0, 1, true, true),
+    genericRangeSwitchedP(greaterP, lessP, 0, 1, false, false),
+    genericRangeSwitchedP(greaterP, lessEqP, 0, 1, false, true),
+    genericRangeSwitchedP(greaterEqP, lessP, 0, 1, true, false),
+    genericRangeSwitchedP(greaterEqP, lessEqP, 0, 1, true, true),
+    genericHalfOpenP(greaterP, true, false),
+    genericHalfOpenP(greaterEqP, true, true),
+    genericHalfOpenP(lessP, false, false),
+    genericHalfOpenP(lessEqP, false, true)
+);
+
 export class VersionRange {
     static #internal = false;
 
@@ -184,7 +243,7 @@ export class VersionRange {
     upper : Version | undefined
     inclusive_upper : boolean
     
-    private constructor(lower : Version | undefined, inclusive_lower : boolean, upper : Version, inclusive_upper : boolean) {
+    private constructor(lower : Version | undefined, inclusive_lower : boolean, upper : Version | undefined, inclusive_upper : boolean) {
         if (!VersionRange.#internal) privateConstructor("VersionRange");
         this.lower = lower;
         this.inclusive_lower = inclusive_lower;
@@ -193,14 +252,33 @@ export class VersionRange {
         freeze(this);
     }
 
-    static make(lower : Version | undefined, inclusive_lower : boolean, upper : Version, inclusive_upper : boolean) : VersionRange | undefined {
-        if (!(Version.thing.is(lower) && Version.thing.is(upper))) return undefined;
+    toString() : string {
+        let s = "";
+        if (this.lower) {
+            s += (this.inclusive_lower ? "≥" : ">") + this.lower;
+        }
+        if (this.upper) {
+            if (s !== "") s += " ";
+            s += (this.inclusive_upper ? "≤" : "<") + this.upper;
+        }
+        return s;
+    }
+
+    static parse(range : string) : VersionRange | undefined {
+        const s = parseLine(rangeP, null, range)?.result;
+        return s ? (s as SectionRange).range : undefined;        
+    }
+
+    static make(lower : Version | undefined, inclusive_lower : boolean, upper : Version | undefined, inclusive_upper : boolean) : VersionRange | undefined {
+        if (!((lower === undefined || Version.thing.is(lower)) && (upper === undefined || Version.thing.is(upper)))) return undefined;
         if (!(boolean.is(inclusive_lower) && boolean.is(inclusive_upper))) return undefined;
         VersionRange.#internal = true;
         const made = new VersionRange(lower, inclusive_lower, upper, inclusive_upper);
         VersionRange.#internal = false;
         return made;
     }
+
+    static parser : P = rangeP;
 }
 freeze(VersionRange);
 
