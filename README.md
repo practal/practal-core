@@ -7,6 +7,8 @@ Practal has its first monthly sponsor, many thanks to [purebounce](https://githu
 Practal is available as a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=Practal.practal).
 Make sure you also have the [STIX fonts](https://www.stixfonts.org) installed on your system.
 
+> NOTE: Practal switched to using the backtick ` instead of the apostrophe ' for syntax category related things. Keep that in mind when trying out old examples! See [Foundation.practal](https://github.com/practal/practal-core/blob/main/src/examples/Foundation.practal) for an updated example.
+
 ## Features
 
 You can describe an Abstraction Logic theory in a `.practal` file by:

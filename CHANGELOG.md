@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.0.12] - 2023-02-15
+
+Point out to users in README that syntax has changed.
+
 ## [0.0.11] - 2023-02-15
 
 Added surface syntax for proofs and theorem expressions. These are not checked in any way yet.
