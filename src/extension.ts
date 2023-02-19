@@ -10,6 +10,7 @@ import { Span, spanOfResult } from './pyramids/span.js';
 import { generateCustomGrammar } from './term_parser.js';
 import { nat } from './things/primitives.js';
 import { assertNever } from './things/test.js';
+import { Environment } from './environment/environment.js';
 
 function semantics(type : TokenType) : [string, string[]] | undefined {
     switch (type) {
@@ -148,6 +149,7 @@ export function activate(context: vscode.ExtensionContext) {
     debug("Check https://practal.com for information and updates."); 
     debug("--------------------------------------------------------------------");
     debug("Executing in '" + __dirname + "'.");
+    let _ = Environment();
     /*const state = context.globalState
     const installed = state.get("practalium.installed");
     if (installed) {

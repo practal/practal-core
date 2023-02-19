@@ -1,55 +1,26 @@
-import { TextLines } from "../pyramids/textlines";
-import { int, nat } from "../things/primitives";
 import { freeze } from "../things/utils";
-import { Identifiers } from "./identifier";
+import { Identifier, Identifiers } from "./identifier"
+import { FileHandle, PractalFile, PractalFileFormat } from "./practalfile"
+import { Version } from "./version"
+import { VSCodeEnvironment } from "./vscode_environment";
 
-export class FileHandle {
+export type PackageName = Identifiers
+
+export class PackageHandle {
+
+    name : PackageName
+    version : Version
     reference : any
-    constructor(reference : any) {
+
+    constructor(name : PackageName, version : Version, reference : any) {
+        this.name = name;
+        this.version = version;
         this.reference = reference;
         freeze(this);
     }
-    toString() : string {
-        return "File(" + this.reference + ")";
-    }
+
 }
-freeze(FileHandle);
-
-interface Binary {
-    length : nat // length in bytes
-    byte(index : nat) : nat   
-}
-
-export const enum PractalFileFormat {
-    practal,
-    config,
-    binary
-}
-
-export type PractalFileInfo<Format extends PractalFileFormat> = {
-    handle : FileHandle
-    format : Format
-    namespace : Identifiers
-    name : string
-    version : nat
-}
-
-export type PractalFile = PractalPractalFile | PractalBinaryFile | PractalConfigFile
-
-export type PractalPractalFile = {
-    info : PractalFileInfo<PractalFileFormat.practal>
-    lines : TextLines
-}
-
-export type PractalBinaryFile = {
-    info : PractalFileInfo<PractalFileFormat.binary>
-    binary : Binary
-} 
-
-export type PractalConfigFile = {
-    info : PractalFileInfo<PractalFileFormat.config>
-    lines : TextLines
-}
+freeze(PackageHandle);
 
 export interface Environment {
 
@@ -58,19 +29,22 @@ export interface Environment {
      */
     fileHandleOf(file : any) : FileHandle | undefined
 
-    packageManagerFor(file : FileHandle) : Promise<PackageManager>
-
     readFile(file : FileHandle) : Promise<PractalFile>
 
+    listGlobalPackages() : Promise<PackageName[]>
+
+    globalPackageOf(file : FileHandle) : Promise<PackageHandle>
+
+    versionsOfGlobalPackage(global_package_name : PackageName) : Promise<PackageHandle[]>
+
+    filesOfGlobalPackage(package_handle : PackageHandle) : Promise<[FileHandle[]][]>
+
 }
 
-export interface PackageManager {
+let environment : Environment | undefined = undefined;
 
-    //listPackages() : 
-
-
-}
-
-/*function run() {
-    let worker = new Worker(
-}*/
+export function Environment() : Environment {
+    if (environment !== undefined) return environment;
+    environment = new VSCodeEnvironment();
+    return environment;
+} 
