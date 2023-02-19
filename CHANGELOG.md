@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.0.12] - 2023-02-15
+## [0.0.12] - 2023-02-19
 
 Point out to users in README that syntax has changed.
 
