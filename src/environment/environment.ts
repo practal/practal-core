@@ -1,15 +1,28 @@
 import { freeze } from "../things/utils";
 import { Identifier, Identifiers } from "./identifier"
-import { FileHandle, PractalFile, PractalFileFormat } from "./practalfile"
+import { FileHandle, FileHandleWithVersion, PractalFile, PractalFileFormat } from "./practalfile"
 import { Version } from "./version"
 import { VSCodeEnvironment } from "./vscode_environment";
 
-export type PackageName = Identifiers
+export class PackageName {
+
+    ids : Identifiers
+
+    constructor(ids : Identifiers) {
+        this.ids = ids;
+        if (this.ids.length === 0) throw new Error("Package cannot have empty name.");
+        freeze(this);
+    }
+
+
+}
+freeze(PackageName);
+
 
 export class PackageHandle {
 
-    name : PackageName
-    version : Version
+    name : PackageName | null 
+    version : Version | null
     reference : any
 
     constructor(name : PackageName, version : Version, reference : any) {
@@ -25,19 +38,28 @@ freeze(PackageHandle);
 export interface Environment {
 
     /**
-     *  It depends on the environment what `file` can be. For a VSCode environment, it will be a URI.
+     *  It depends on the environment what `file` can be. 
+     *  For a VSCode environment, `file` will be a URI.
      */
     fileHandleOf(file : any) : FileHandle | undefined
 
-    readFile(file : FileHandle) : Promise<PractalFile>
+    /**
+     *  It depends on the environment what `file` and `version` can be. 
+     *  For a VSCode environment, `file` will be a URI, and `version` will be the version of the TextDocument.
+     */
+    fileHandleWithVersionOf(file : any, version : any) : FileHandleWithVersion | undefined
 
-    listGlobalPackages() : Promise<PackageName[]>
+    /**
+     * If the file handle has a version, and the environment has no content stored for this version, returns null.
+     * If the file has no version, return the newest content for this file.
+     */
+    readFile(file : FileHandle | FileHandleWithVersion) : Promise<PractalFile | null>
 
-    globalPackageOf(file : FileHandle) : Promise<PackageHandle>
+    listPackages() : Promise<PackageHandle[]>
 
-    versionsOfGlobalPackage(global_package_name : PackageName) : Promise<PackageHandle[]>
+    packageOf(file : FileHandle) : Promise<PackageHandle>
 
-    filesOfGlobalPackage(package_handle : PackageHandle) : Promise<[FileHandle[]][]>
+    filesOfPackage(package_handle : PackageHandle) : Promise<FileHandle[]>
 
 }
 

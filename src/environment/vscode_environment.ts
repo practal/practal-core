@@ -1,11 +1,20 @@
 import * as vscode from 'vscode';
 import { debug } from "../things/debug";
+import { nat } from '../things/primitives';
+import { assertNever } from '../things/test';
+import { notImplemented } from '../things/utils';
 import { Environment, PackageHandle } from "./environment";
+import { FilesCache } from './filecache';
 import { Identifiers } from "./identifier";
-import { FileHandle, PractalFile } from "./practalfile";
+import { allPractalFileFormats, FileHandle, FileHandleWithVersion, FileVersion, PractalBinaryFile, PractalFile, PractalFileFormat, suffixOfPractalFileFormat } from "./practalfile";
 
 
-function listWorkspaceFolders() {
+function makePractalFilesPattern() : string {
+    const group = allPractalFileFormats.map(suffixOfPractalFileFormat).join(",");
+    return `**/*.{${group}}`;
+}
+
+async function listWorkspaceFolders() {
     const folders = vscode.workspace.workspaceFolders;
     if (folders === undefined) {
         debug("no workspace found");
@@ -17,37 +26,141 @@ function listWorkspaceFolders() {
             i += 1;
         }
     } 
+    const packageConfigFiles = await vscode.workspace.findFiles("**/package.practal.config");
+    debug("Found " + packageConfigFiles.length + " package config files: ");
+    for (const f of packageConfigFiles) {
+        debug("  " + f);
+    }
+    const allPractalFiles = await vscode.workspace.findFiles(makePractalFilesPattern());
+    debug("Found " + allPractalFiles.length + " practal files: ");
+    for (const f of allPractalFiles) {
+        debug("  " + f);
+    }
+    //const moduleFiles = await
+}
+
+function uriOf(handle : FileHandle | FileHandleWithVersion) : vscode.Uri {
+    const uri = handle.reference;
+    if (!(uri instanceof vscode.Uri)) throw new Error("Invalid handle.");
+    return uri;
+}
+
+function formatOf(uri : vscode.Uri) : PractalFileFormat | undefined {
+    for (const format of allPractalFileFormats) {
+        const suffix = suffixOfPractalFileFormat(format);
+        if (uri.path.endsWith("." + suffix)) {
+            return format;
+        }
+    }
+    return undefined;
+}
+
+async function practalBinaryFileFromURI(uri : vscode.Uri) : Promise<PractalFile> {
+    const content = await vscode.workspace.fs.readFile(uri);
+    notImplemented();
+}
+
+async function practalTextFileFromURI(uri : vscode.Uri, format : PractalFileFormat, version : string) : Promise<PractalFile> {
+    notImplemented();
+}
+
+function practalFileFromTextDocument(format : PractalFileFormat, version : string, textdocument : vscode.TextDocument) : PractalFile {
+    notImplemented();
 }
 
 export class VSCodeEnvironment implements Environment {
 
+    #id : string
+    #filescache : FilesCache
+    #version_counter : nat
+
     constructor() {
-        debug("VSCode environment is live!");
+        this.#id = Date.now().toString();
+        this.#filescache = new FilesCache();
+        this.#version_counter = 0;
+        debug("VSCode environment is live (id = " + this.#id + ")!");
         vscode.workspace.onDidChangeWorkspaceFolders(event => {
             //const added_folders = event.added;
             //const removed_folders = event.removed;
-            listWorkspaceFolders();
+            //listWorkspaceFolders();
         });
         listWorkspaceFolders();
     }
 
+    #vsVersion(version : nat) : string {
+        return "vs" + this.#id + "_" + version;
+    }
+
+    #envVersion() : string {
+        const version = "" + this.#version_counter;
+        this.#version_counter += 1;
+        return "env" + this.#id + "_" + version;
+    }
+
     fileHandleOf(file: any): FileHandle | undefined {
-        throw new Error("Method not implemented.");
+        if (!(file instanceof vscode.Uri)) return undefined;
+        return new FileHandle(file);
     }
-    readFile(file: FileHandle): Promise<PractalFile> {
-        throw new Error("Method not implemented.");
+
+    fileHandleWithVersionOf(file: any, version: any): FileHandleWithVersion | undefined {
+        if (!(file instanceof vscode.Uri)) return undefined;
+        if (!nat.is(version)) return undefined;
+        const fileversion = this.#vsVersion(version);
+        return new FileHandleWithVersion(file, fileversion);
     }
-    listGlobalPackages(): Promise<Identifiers[]> {
-        throw new Error("Method not implemented.");
+
+    async readFile(file: FileHandle | FileHandleWithVersion): Promise<PractalFile | null> {
+        const uri = uriOf(file);
+        const format = formatOf(uri);
+        if (format === undefined) throw new Error("Unknown file format.");
+        const uri_string = uri.toString();
+        const cache = this.#filescache.cacheOf(uri_string);
+        if (file instanceof FileHandleWithVersion) {
+            const practalfile = cache.lookup(file.version);
+            if (practalfile !== undefined) return practalfile;
+        }
+        if (format === PractalFileFormat.config || format === PractalFileFormat.practal) {
+            for (const document of vscode.workspace.textDocuments) {
+                if (document.uri.toString() === uri_string) {
+                    const version = this.#vsVersion(document.version);
+                    if (file instanceof FileHandleWithVersion) {
+                        if (version === file.version) {
+                            const practalfile = practalFileFromTextDocument(format, version, document);
+                            cache.add(practalfile);
+                            return practalfile;
+                        } else {
+                            return null;
+                        }
+                    } else {
+                        let practalfile = cache.lookup(version);
+                        if (practalfile !== undefined) return practalfile;
+                        practalfile = practalFileFromTextDocument(format, version, document);
+                        cache.add(practalfile);
+                        return practalfile;                    
+                    }
+                }
+            }
+            if (file instanceof FileHandleWithVersion) return null;
+            const practalfile = await practalTextFileFromURI(uri, format, this.#envVersion());
+            return cache.addIfNewContent(practalfile);
+        } else if (format === PractalFileFormat.binary) {
+            const practalfile = await practalBinaryFileFromURI(uri);
+            return cache.addIfNewContent(practalfile);
+        } else {
+            assertNever(format);
+        }
     }
-    globalPackageOf(file: FileHandle): Promise<PackageHandle> {
-        throw new Error("Method not implemented.");
+
+    listPackages(): Promise<PackageHandle[]> {
+        throw new Error('Method not implemented.');
     }
-    versionsOfGlobalPackage(global_package_name: Identifiers): Promise<PackageHandle[]> {
-        throw new Error("Method not implemented.");
+
+    packageOf(file: FileHandle): Promise<PackageHandle> {
+        throw new Error('Method not implemented.');
     }
-    filesOfGlobalPackage(package_handle: PackageHandle): Promise<[FileHandle[]][]> {
-        throw new Error("Method not implemented.");
+
+    filesOfPackage(package_handle: PackageHandle): Promise<FileHandle[]> {
+        throw new Error('Method not implemented.');
     }
 
 }
