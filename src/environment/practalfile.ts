@@ -77,7 +77,6 @@ export type PractalFile =
 export type PractalFileCase<format extends PractalFileFormat, Content> = {
     format : format,
     handle : FileHandleWithVersion,
-    namespace : Identifiers,
     name : string,
     content_hash : int,
     content : Content
@@ -85,7 +84,6 @@ export type PractalFileCase<format extends PractalFileFormat, Content> = {
 
 export function PractalTextFile(format : PractalFileFormat.practal | PractalFileFormat.config,
     handle : FileHandleWithVersion,
-    namespace : Identifiers,
     name : string,
     content : TextLines) : PractalFile 
 {
@@ -93,7 +91,6 @@ export function PractalTextFile(format : PractalFileFormat.practal | PractalFile
     const file : PractalFile = {
         format : format,
         handle : handle, 
-        namespace : namespace,
         name : name,
         content_hash : hash,
         content : content
@@ -105,7 +102,6 @@ freeze(PractalTextFile);
 
 export function PractalBinaryFile(
     handle : FileHandleWithVersion,
-    namespace : Identifiers,
     name : string,
     content : Binary) : PractalFile 
 {
@@ -113,7 +109,6 @@ export function PractalBinaryFile(
     const file : PractalFile = {
         format : PractalFileFormat.binary,
         handle : handle, 
-        namespace : namespace,
         name : name,
         content_hash : hash,
         content : content
