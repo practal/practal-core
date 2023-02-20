@@ -17,9 +17,9 @@ A proof consists of a list of proof steps, where a proof step is either
 A theorem expression is either
 
 * "*theorem-reference*" : A reference to an existing theorem.
-* "*theorem-expression*[..., P := x. x = t, ...]" : A substitution of free variables in the theorem denoted by *theorem-expression*.
-* "*theorem-expression*[..., 0 : *th-expr-0*, ..., *label* : x y. *th-expr-1* , ...]" : Instantiating the premisses  of a theorem denoted by *theorem-expression*.
-* "*theorem-expression*`.`*label*" or "*theorem-expression*`.`0": This throws away all conclusions of a theorem except the one selected via the given label or index. 
+* "*theorem-expression*`[`..., `P := x. x = t`, ...`]`" : A substitution of free variables in the theorem denoted by *theorem-expression*.
+* "*theorem-expression*`[`..., `0 :` *th-expr-0*, ..., *label* `: x y.` *th-expr-1* , ...`]`" : Instantiating the premisses  of a theorem denoted by *theorem-expression*.
+* "*theorem-expression*`.`*label*" or "*theorem-expression*`.0`": This throws away all conclusions of a theorem except the one selected via the given label or index. 
 
 
 
