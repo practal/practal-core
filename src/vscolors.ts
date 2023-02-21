@@ -57,7 +57,7 @@ const solarized_dark : ColorMap = [
     ["sc", "cyan"],
     ["free", "blue"],
     ["bound", "green"],
-    ["punctuation", "normal"]
+    ["punctuation", "primary"]
 ];
 
 const solarized_light : ColorMap = [
@@ -84,7 +84,7 @@ const solarized_light : ColorMap = [
     ["sc", "cyan"],
     ["free", "blue"],
     ["bound", "green"],
-    ["punctuation", "normal"]
+    ["punctuation", "primary"]
 ];
 
 const default_dark : ColorMap = [
@@ -101,7 +101,7 @@ const default_dark : ColorMap = [
     ["sc", "#569CD6"],
     ["free", "#9CDCFE"],
     ["bound", "#4EC9B0"],    
-    ["punctuation", "normal"]
+    ["punctuation", "primary"]
 ];
 
 const default_light : ColorMap = [
@@ -118,7 +118,7 @@ const default_light : ColorMap = [
     ["sc", "#569CD6"],
     ["free", "#0070C1"],
     ["bound", "#A31515"],    
-    ["punctuation", "normal"]
+    ["punctuation", "primary"]
 ];
 
 function transform(rules : string, colormap : ColorMap) : string {

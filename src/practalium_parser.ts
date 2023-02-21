@@ -96,12 +96,14 @@ export enum SectionName {
     conclusion,
     proof,
     sorry,
-    thm_expr
+    thm_expr,
+
+    term_section
 
 }
 
 export type SectionData = SectionDataNone | SectionDataError | SectionDataTerm | SectionDataTerms | SectionDataCustom | SectionDataTemplate | 
-    SectionDataRule | SectionDataPremise | SectionDataConclusion | SectionDataProof | SectionDataThmExpr
+    SectionDataRule | SectionDataPremise | SectionDataConclusion | SectionDataProof | SectionDataThmExpr | SectionDataTermSection
 
 export type SectionName_DataNone = 
     SectionName.theory | SectionName.declaration | SectionName.comment |
@@ -262,6 +264,21 @@ export function SectionDataRule(kind : RuleKind, rule : UIRule) : SectionDataRul
         rule : rule
     };
 }
+
+export type SectionDataTermSection = {
+    type : SectionName.term_section,
+    label : NameDecl | undefined,
+    term : UITerm | undefined    
+}
+
+export function SectionDataTermSection(label : NameDecl | undefined, term : UITerm | undefined) : SectionDataTermSection
+{
+    return {
+        type : SectionName.term_section,
+        label : label,
+        term : term
+    };
+}   
 
 export type ParseState = {
 
@@ -909,6 +926,7 @@ const declarationSection : S = { bullet : modifyResultDP(declarationDP, addDecla
 const lemmaDP : P = seqDP(keyword("lemma"), optDP(spacesDP, labelDP));
 const theoremDP : P = seqDP(keyword("theorem"), optDP(spacesDP, labelDP));
 const axiomDP : P = seqDP(keyword("axiom"), optDP(spacesDP, labelDP));
+const termbulletDP : P = seqDP(keyword("term"), optDP(spacesDP, labelDP));
 const conjectureDP : P = seqDP(keyword("conjecture"), optDP(spacesDP, labelDP));
 const corollaryDP : P = seqDP(keyword("corollary"), optDP(spacesDP, labelDP));
 
@@ -1030,15 +1048,36 @@ function processRule(lines : TextLines, result : R) : R {
     return result;*/
 }
 
+function processTermSection(lines : TextLines, result : R) : R {
+    if (result === undefined) return undefined;
+    const label = readLabel(lines, result.result); //[...iterateContentTokens(result.result, t => t === TokenType.label)];
+    const terms = [...iterateContentSections(result.result, s => s.type == SectionName.term)];
+    let term : UITerm | undefined = undefined;
+    if (terms.length === 1) {
+        term = (terms[0].type as SectionDataTerm).term;
+    }
+    result.result.type = SectionDataTermSection(label, term);
+    let s = "";
+    if (label !== undefined) s = "term " + label.long + ": "; else s = "term ";
+    let printed = "?";
+    if (term !== undefined) {
+        printUITerm(result.state.theory, term, s => printed = s);
+        s += printed;
+        debug(s);
+    }
+    return result;
+}
+
 
 const axiomSection : S = { bullet: axiomDP, body: ruleDP(RuleKind.axiom, rulePremiseSection, ruleInferSection), type: null, process: processRule };
+const termSection : S = { bullet: termbulletDP, body: totalTermDP(), type: null, process: processTermSection };
 const conjectureSection : S = { bullet: conjectureDP, body: ruleDP(RuleKind.conjecture, rulePremiseSection, ruleInferSection), type: null, process: processRule };
 const lemmaSection : S = { bullet: lemmaDP, body: ruleDP(RuleKind.lemma, proofSection, sorrySection, qedSection, rulePremiseSection, ruleInferSection), type: null, process: processRule }; 
 const theoremSection : S = { bullet: theoremDP, body: ruleDP(RuleKind.theorem, proofSection, sorrySection, qedSection, rulePremiseSection, ruleInferSection), type: null, process: processRule };
 const corollarySection : S = { bullet: corollaryDP, body: ruleDP(RuleKind.corollary, proofSection, sorrySection, qedSection, rulePremiseSection, ruleInferSection), type: null, process: processRule };
 
 export const practaliumDP : P = enumDP(syntacticCategorySection, commentSection, theorySection, 
-    axiomSection, conjectureSection, lemmaSection, theoremSection, corollarySection, 
+    axiomSection, termSection, conjectureSection, lemmaSection, theoremSection, corollarySection, 
     declarationSection, errorSection);
 
 

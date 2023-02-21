@@ -1,0 +1,19 @@
+theory Decimal
+
+`decimal < `decimal-digit
+
+\zero `decimal-digit 0
+\one `decimal-digit 1
+\two `decimal-digit 2
+\three `decimal-digit 3
+\four `decimal-digit 4
+\five `decimal-digit 5
+\six `decimal-digit 6
+\seven `decimal-digit 7
+\eight `decimal-digit 8
+\nine `decimal-digit 9
+
+\decimal major minor 
+    `decimal #major`decimal#minor`decimal-digit
+
+term 427

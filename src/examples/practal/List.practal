@@ -1,0 +1,18 @@
+theory List
+
+loose `open-list  
+`list > `value
+
+\nil `open-list
+\cons x L `open-list #x`value , #L`
+\singleton x `open-list #x`value 
+    = \cons x \nil
+
+\list L `list [ #L`open-list ]
+    = L
+
+term  [x, y, z]
+term [[]]
+term redundant-nil: [a, nil]
+term y[a, b]
+
