@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.13] - 2023-02-21
+
+Allow empty syntax specs again; this makes sense together with loose syntactic categories.
+
+Playing around with syntax a bit shows that defining syntax for 
+[lists](https://github.com/practal/practal-core/blob/ccb4f295a22e84a32a05c5d41d3404fa3ae18dd0/src/examples/practal/List.practal) 
+and 
+[decimals](https://github.com/practal/practal-core/blob/ccb4f295a22e84a32a05c5d41d3404fa3ae18dd0/src/examples/practal/Decimal.practal) 
+works well.
+
+Furthermore, first work on environments is part of this release, but only in so far that it produces some
+debug outputs in the Practal output panel.
+
 ## [0.0.12] - 2023-02-19
 
 Point out to users in README that syntax has changed.
