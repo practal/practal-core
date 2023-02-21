@@ -2,8 +2,7 @@ import { TextLines } from "../pyramids/textlines";
 import { addHash, int, nat, startHash, string } from "../things/primitives";
 import { assertNever } from "../things/test";
 import { Hash, mkHash } from "../things/things";
-import { freeze } from "../things/utils";
-import { Identifiers } from "./identifier";
+import { force, freeze } from "../things/utils";
 
 export class FileHandle {
     reference : any
@@ -66,7 +65,7 @@ export interface Binary {
     length : nat
 
     /** unsigned byte at index */
-    at(index : nat) : nat
+    at(index : nat) : nat | undefined
 }
 
 export type PractalFile = 
@@ -77,21 +76,17 @@ export type PractalFile =
 export type PractalFileCase<format extends PractalFileFormat, Content> = {
     format : format,
     handle : FileHandleWithVersion,
-    name : string,
     content_hash : int,
     content : Content
 }
 
 export function PractalTextFile(format : PractalFileFormat.practal | PractalFileFormat.config,
-    handle : FileHandleWithVersion,
-    name : string,
-    content : TextLines) : PractalFile 
+    handle : FileHandleWithVersion, content : TextLines) : PractalFile 
 {
     const hash = textLinesHash.hash(content);
     const file : PractalFile = {
         format : format,
         handle : handle, 
-        name : name,
         content_hash : hash,
         content : content
     };
@@ -101,15 +96,12 @@ export function PractalTextFile(format : PractalFileFormat.practal | PractalFile
 freeze(PractalTextFile);
 
 export function PractalBinaryFile(
-    handle : FileHandleWithVersion,
-    name : string,
-    content : Binary) : PractalFile 
+    handle : FileHandleWithVersion, content : Binary) : PractalFile 
 {
     const hash = binariesHash.hash(content);
     const file : PractalFile = {
         format : PractalFileFormat.binary,
         handle : handle, 
-        name : name,
         content_hash : hash,
         content : content
     };
@@ -154,7 +146,7 @@ function hashBinary(binary : Binary) : int {
     let hash = startHash(binariesHashSeed);
     const count = binary.length;
     for (let i = 0; i < count; i++) {
-        hash = addHash(hash, binary.at(i));
+        hash = addHash(hash, force(binary.at(i)));
     }
     return hash;
 }

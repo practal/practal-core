@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
+import { createTextLines, createTextLinesFromBytes } from '../pyramids/textlines';
 import { debug } from "../things/debug";
 import { nat } from '../things/primitives';
 import { assertNever } from '../things/test';
-import { notImplemented } from '../things/utils';
+import { force, notImplemented } from '../things/utils';
 import { Environment, PackageHandle } from "./environment";
 import { FilesCache } from './filecache';
 import { Identifiers } from "./identifier";
-import { allPractalFileFormats, FileHandle, FileHandleWithVersion, FileVersion, PractalBinaryFile, PractalFile, PractalFileFormat, suffixOfPractalFileFormat } from "./practalfile";
+import { allPractalFileFormats, Binary, FileHandle, FileHandleWithVersion, FileVersion, PractalBinaryFile, PractalFile, PractalFileFormat, PractalTextFile, suffixOfPractalFileFormat } from "./practalfile";
 
 
 function makePractalFilesPattern() : string {
@@ -55,17 +56,29 @@ function formatOf(uri : vscode.Uri) : PractalFileFormat | undefined {
     return undefined;
 }
 
-async function practalBinaryFileFromURI(uri : vscode.Uri) : Promise<PractalFile> {
+async function practalBinaryFileFromURI(uri : vscode.Uri, version : string) : Promise<PractalFile> {
     const content = await vscode.workspace.fs.readFile(uri);
-    notImplemented();
+    const handle = new FileHandleWithVersion(uri, version);
+    return PractalBinaryFile(handle, content);
 }
 
-async function practalTextFileFromURI(uri : vscode.Uri, format : PractalFileFormat, version : string) : Promise<PractalFile> {
-    notImplemented();
+async function practalTextFileFromURI(uri : vscode.Uri, format : PractalFileFormat.config | PractalFileFormat.practal, version : string) : Promise<PractalFile> {
+    const content = await vscode.workspace.fs.readFile(uri);
+    const handle = new FileHandleWithVersion(uri, version);
+    return PractalTextFile(format, handle, createTextLinesFromBytes(content));
 }
 
-function practalFileFromTextDocument(format : PractalFileFormat, version : string, textdocument : vscode.TextDocument) : PractalFile {
-    notImplemented();
+function practalFileFromTextDocument(format : PractalFileFormat.config | PractalFileFormat.practal, 
+    version : string, textdocument : vscode.TextDocument) : PractalFile 
+{
+    let lines : string[] = [];
+    const count = textdocument.lineCount;
+    for (let i = 0; i < count; i++) {
+        lines.push(textdocument.lineAt(i).text);
+    }
+    const handle = new FileHandleWithVersion(textdocument.uri, version);
+    const content = createTextLines(lines);
+    return PractalTextFile(format, handle, content);
 }
 
 export class VSCodeEnvironment implements Environment {
@@ -144,7 +157,7 @@ export class VSCodeEnvironment implements Environment {
             const practalfile = await practalTextFileFromURI(uri, format, this.#envVersion());
             return cache.addIfNewContent(practalfile);
         } else if (format === PractalFileFormat.binary) {
-            const practalfile = await practalBinaryFileFromURI(uri);
+            const practalfile = await practalBinaryFileFromURI(uri, this.#envVersion());
             return cache.addIfNewContent(practalfile);
         } else {
             assertNever(format);

@@ -103,8 +103,9 @@ if (failures > 0) {
 import { enableTests, runTests } from "./things/test";
 enableTests();
 
-import { configureDebugging } from "./things/debug";
+import { configureDebugging, debug } from "./things/debug";
 configureDebugging(console.log);
 
 import "./environment/test";
 runTests();
+
