@@ -1,3 +1,4 @@
+import { TextDecoder } from "util";
 import { Lexer, spacesL } from "./lexer";
 import { Span, SpanStr } from "./span";
 
@@ -78,6 +79,12 @@ class TextLinesImpl implements TextLines {
 
 export function createTextLines(lines : string[]) : TextLines {
     return new TextLinesImpl(lines);
+}
+
+export function createTextLinesFromBytes(buffer : Uint8Array) : TextLines {
+    const s = new TextDecoder().decode(buffer);
+    const lines = s.split(/\n\r|\r\n|\r|\n/);
+    return createTextLines(lines);
 }
 
 /** Represents a (possibly modified) window into an existing TextLines. */

@@ -31,6 +31,17 @@ export function combineHashes(hashes : Iterable<int>) : int {
 }
 freeze(combineHashes);
 
+export function startHash(seed? : int) : int {
+    if (seed === undefined) return 1;
+    else return addHash(1, seed);
+}
+
+export function addHash(accumulator : int, hash : int) : int {
+    accumulator = 31 * accumulator + hash;
+    accumulator = accumulator & accumulator;
+    return accumulator;
+}
+
 /** 
  * Combines a sequence of hashes into a single hash. 
  * Looks what we really want here is the MurmurHash3 (https://github.com/scala/scala/blob/2.11.x/src/library/scala/util/hashing/MurmurHash3.scala).
@@ -66,3 +77,10 @@ function hashString(x : string) : int {
 
 export const string = mkOrderAndHash("string", 
     x => typeof x === "string", compareString, hashString);
+
+const hashTrue = string.hash("true");
+const hashFalse = string.hash("false");
+export const boolean : Hash<boolean> & Order<boolean> = mkOrderAndHash("boolean",
+    x => x === true || x === false, 
+    (x, y) => compareInt(x ? 1 : 0, y ? 1 : 0), 
+    x => x ? hashTrue : hashFalse);

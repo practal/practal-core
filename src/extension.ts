@@ -3,13 +3,14 @@ import { registerLanguageTokenizer } from './parser_bridge.js';
 import { TextLines } from './pyramids/textlines.js';
 import { iterateTokensDeep, Result, ResultKind, textOfToken, Token } from './pyramids/deterministic_parser.js';
 import { ALL_TOKEN_TYPES, practaliumDP, ParseState, TokenType, SectionData, SectionName } from './practalium_parser.js';
-import { assertNever } from './things/utils.js';
 import { configureDebugging, debug } from './things/debug.js';
 import { config } from 'process';
 import { Diagnoses, Diagnosis, Severity, UITheory } from './uitheory.js';
 import { Span, spanOfResult } from './pyramids/span.js';
 import { generateCustomGrammar } from './term_parser.js';
 import { nat } from './things/primitives.js';
+import { assertNever } from './things/test.js';
+import { Environment } from './environment/environment.js';
 
 function semantics(type : TokenType) : [string, string[]] | undefined {
     switch (type) {
@@ -147,6 +148,8 @@ export function activate(context: vscode.ExtensionContext) {
     debug("©︎ 2023 Steven Obua (trading as Recursive Mind)");
     debug("Check https://practal.com for information and updates."); 
     debug("--------------------------------------------------------------------");
+    debug("Executing in '" + __dirname + "'.");
+    let _ = Environment();
     /*const state = context.globalState
     const installed = state.get("practalium.installed");
     if (installed) {

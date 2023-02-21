@@ -1,8 +1,8 @@
 import { charL, Lexer } from "./lexer"
-import { cutoffAfterIndentation, cutoutTextLines, skipLineEnds, TextLines, TextLinesWindow } from "./textlines"
-import { assertNever } from "../things/utils"
+import { createTextLines, cutoffAfterIndentation, cutoutTextLines, skipLineEnds, TextLines, TextLinesWindow } from "./textlines"
 import { debug, debugging, debugId } from "../things/debug"
 import { nat } from "../things/primitives"
+import { assertNever } from "../things/test"
 
 export const enum ResultKind {
     TOKEN,
@@ -327,7 +327,7 @@ export function tokenDP<State, S, T>(lexer : Lexer, tokentype : T, strict : bool
     return parse;
 }
 
-export function strictTokenDP<State, S, T>(lexer : Lexer, tokentype : T, strict : boolean = false) : DetParser<State, S, T> {
+export function strictTokenDP<State, S, T>(lexer : Lexer, tokentype : T) : DetParser<State, S, T> {
     return tokenDP(lexer, tokentype, true);
 }
 
@@ -741,4 +741,14 @@ export function newlineDP<State, S, T>(type : S | null | undefined = undefined) 
 
     return parse;
 }
+
+export function parseLine<State, S, T>(parser : DetParser<State, S, T>, state : State, line : string) : { state : State, result : S | T | null | undefined } | undefined {
+    const lines = createTextLines([line]);
+    const parsed = parser(state, lines, 0, 0);
+    if (parsed === undefined) return undefined;
+    const [endLine, endOffset] = endOf(parsed.result);
+    if (endLine < 1 && endOffset < line.length) return undefined;
+    return { state : parsed.state, result: parsed.result.type };
+}
+
 

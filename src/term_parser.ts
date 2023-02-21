@@ -10,7 +10,8 @@ import { Handle, SyntaxFragmentKind, UITheory } from "./uitheory";
 import { debug } from "./things/debug";
 import { Digraph, transitiveClosure } from "./things/digraph";
 import { nat } from "./things/primitives";
-import { assertNever, force, internalError, isUnicodeDigit, isUnicodeLetter, timeIt } from "./things/utils";
+import { force, internalError, isUnicodeDigit, isUnicodeLetter, timeIt } from "./things/utils";
+import { assertNever } from "./things/test";
 
 const ows = "ows";
 const ws = "ws";
@@ -85,7 +86,7 @@ function isIdDigit(c : string) : boolean {
 const idLetterL = charL(isIdLetter);
 const idAlphaL = charL(c => isIdLetter(c) || isIdDigit(c));
 const idHyphenL = literalL("-");
-const identifierL = seqL(idLetterL, repL(idAlphaL), repL(seqL(idHyphenL, rep1L(idAlphaL))));   
+export const identifierL = seqL(idLetterL, repL(idAlphaL), repL(seqL(idHyphenL, rep1L(idAlphaL))));   
 
 function isVarLetter(c : string) : boolean {
     return isUnicodeLetter(c);

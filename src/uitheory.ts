@@ -4,10 +4,11 @@ import { OnlineDAG } from "./things/online_dag";
 import { Span, spanOfResult, SpanStr } from "./pyramids/span";
 import { absoluteSpan, TextLines } from "./pyramids/textlines";
 import { nat } from "./things/primitives";
-import { assertNever, force, freeze, notImplemented, privateConstructor } from "./things/utils";
+import { freeze, privateConstructor } from "./things/utils";
 import { UIRule, UITerm } from "./uiterm";
 import { debug } from "./things/debug";
 import { firstL, Lexer } from "./pyramids/lexer";
+import { assertNever } from "./things/test";
 
 export type Handle = nat
 

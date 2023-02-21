@@ -5,7 +5,7 @@ import { DetParser, Token } from './pyramids/deterministic_parser';
 import { debug } from './things/debug';
 import { Diagnosis, Severity } from './uitheory';
 import { Span, spanOfResult } from './pyramids/span';
-import { assertNever, notImplemented } from './things/utils';
+import { assertNever } from './things/test';
 
 class TextDocumentLines implements TextLines {
 
@@ -82,7 +82,7 @@ export function createDocumentSemanticTokensProvider<T>(
                 tokensBuilder.push(range, cl, modifiers);
             }
             const diagnostics = [...diagnoses].map(convertDiagnosis);
-            debug("[" + counter + "] found " + tokens.length + " tokens and "+diagnostics.length+" diagnostics in " + duration + " ms (" + document.fileName + ")");
+            debug("[" + counter + "] found " + tokens.length + " tokens and "+diagnostics.length+" diagnostics in " + duration + " ms (" + document.fileName + ":" + document.version + ")");
             diagnosticCollection.set(document.uri, diagnostics);
             return tokensBuilder.build();
         }

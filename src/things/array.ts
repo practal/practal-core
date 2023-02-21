@@ -38,14 +38,34 @@ export function arrayCompare<E>(order : Order<E>, A : E[], B : E[]) : Relation {
     }
     return Relation.EQUAL;    
 }
-freeze(arrayEqual);
+freeze(arrayCompare);
+
+export function arrayCompareLexicographicallyZ<E>(order : Order<E>, zero : E, X : E[], Y : E[]) : Relation {
+    for (let i = 0; i < Math.max(X.length, Y.length); i++) {
+        const x = i < X.length ? X[i] : zero;
+        const y = i < Y.length ? Y[i] : zero;
+        const c = order.compare(x, y);
+        if (c !== Relation.EQUAL) return c;
+    }
+    return Relation.EQUAL;
+}
+freeze(arrayCompareLexicographicallyZ);
+
+export function arrayCompareLexicographically<E>(order : Order<E>, X : E[], Y : E[]) : Relation {
+    for (let i = 0; i < Math.min(X.length, Y.length); i++) {
+        const c = order.compare(X[i], Y[i]);
+        if (c !== Relation.EQUAL) return c;
+    }
+    return nat.compare(X.length, Y.length);
+}
+freeze(arrayCompareLexicographically);
 
 export function ArrayEquality<E>(thing : Equality<E>) : Equality<E[]> {
     return mkEquality("Array", 
         A => arrayIs(thing, A),
         (A, B) => arrayEqual(thing, A, B));
 }
-freeze(ArrayHash);
+freeze(ArrayEquality);
 
 
 export function ArrayHash<E>(thing : Hash<E>) : Hash<E[]> {

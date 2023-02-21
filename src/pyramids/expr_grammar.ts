@@ -1,6 +1,7 @@
 import { debug } from "../things/debug";
 import { int } from "../things/primitives";
-import { assertNever, freeze, groupBy, Printer } from "../things/utils";
+import { assertNever } from "../things/test";
+import { freeze, groupBy, Printer } from "../things/utils";
 import { Grammar, removeUnproductiveNonterminals, Rule} from "./cfg";
 import { GrammarSymbols, isTerminal, Sym } from "./grammar_symbols";
 
