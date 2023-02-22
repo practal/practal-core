@@ -50,11 +50,14 @@ export const basic_grammar : ExprGrammar = {
         rule("Operation-app", "operation-id", "Params"),
         rule("Operator-app", "operator-id", star(ows, "bound-var"), ows, "dot", "Params"),
 
-        rule("Params", ws, "Term-greater-atomic"),
-        rule("Params", ws, "Term-greater-nonatomic"),
-        rule("Params", ws, "Term-base-nonatomic"),        
-        rule("Params", ws, "Atomic-base-atomic", "Params"),
-        rule("Params", ws, "Atomic-greater-atomic", "Params"),
+        rule("Params", "Params0"),
+        rule("Params", "Params1"),
+        rule("Params0"),
+        rule("Params1", ws, "Term-greater-atomic"),
+        rule("Params1", ws, "Term-greater-nonatomic"),
+        rule("Params1", ws, "Term-base-nonatomic"),        
+        rule("Params1", ws, "Atomic-base-atomic", "Params1"),
+        rule("Params1", ws, "Atomic-greater-atomic", "Params1"),
 
 
     ],
