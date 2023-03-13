@@ -9,7 +9,6 @@ import { FilesCache } from './filecache';
 import { Identifiers } from "./identifier";
 import { allPractalFileFormats, Binary, FileHandle, FileHandleWithVersion, FileVersion, PractalBinaryFile, PractalFile, PractalFileFormat, PractalTextFile, suffixOfPractalFileFormat } from "./practalfile";
 
-
 function makePractalFilesPattern() : string {
     const group = allPractalFileFormats.map(suffixOfPractalFileFormat).join(",");
     return `**/*.{${group}}`;
@@ -27,7 +26,8 @@ async function listWorkspaceFolders() {
             i += 1;
         }
     } 
-    const packageConfigFiles = await vscode.workspace.findFiles("**/package.practal.config");
+    const configsuffix = suffixOfPractalFileFormat(PractalFileFormat.config);
+    const packageConfigFiles = await vscode.workspace.findFiles("**/package." + configsuffix);
     debug("Found " + packageConfigFiles.length + " package config files: ");
     for (const f of packageConfigFiles) {
         debug("  " + f);

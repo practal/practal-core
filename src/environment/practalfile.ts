@@ -53,8 +53,8 @@ freeze(allPractalFileFormats);
 export function suffixOfPractalFileFormat(format : PractalFileFormat) : string {
     switch (format) {
         case PractalFileFormat.practal: return "practal";
-        case PractalFileFormat.config: return "practal.config";
-        case PractalFileFormat.binary: return "practal.binary";
+        case PractalFileFormat.config: return "practal-config";
+        case PractalFileFormat.binary: return "practal-binary";
         default: assertNever(format);
     }
 }

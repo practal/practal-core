@@ -1,7 +1,7 @@
 import { normalConstId } from "../identifier";
 import { identifierL } from "../term_parser";
 import { nat, string } from "../things/primitives";
-import { assertEq, assertIsDefined, assertIsUndefined, Test } from "../things/test";
+import { assertEQ, assertEq, assertIsDefined, assertIsUndefined, Test } from "../things/test";
 import { mkOrderAndHash, Relation } from "../things/things";
 import { freeze, privateConstructor } from "../things/utils";
 
@@ -43,9 +43,7 @@ Test(() => {
     assertIsDefined(y);
     assertIsDefined(z);
     assertIsUndefined(w);
-    assertEq(Identifier.thing.compare(x, y), Relation.EQUAL);
-    assertEq(Identifier.thing.compare(y, z), Relation.EQUAL);
-    assertEq(Identifier.thing.compare(z, x), Relation.EQUAL);
+    assertEQ(Identifier.thing, x, y, z);
 });
 
 export class Identifiers implements Iterable<Identifier> {

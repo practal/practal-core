@@ -3,7 +3,8 @@ theory List
 loose `open-list  
 `list > `value
 
-\nil `open-list
+\nil 
+    `open-list
 \cons x L `open-list #x`value , #L`
 \singleton x `open-list #x`value 
     = \cons x \nil
