@@ -44,6 +44,3 @@ axiom Equality-2: x = y ⇒ A[x] ⇒ A[y]
 \n(ot-)eq(uals) A B =  ¬ A = B
     `lit #A`val  ≠  #B`val
     `lit #A`val  !=  #B`val
-
-
-
